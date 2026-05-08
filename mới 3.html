@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sổ Theo Dõi Vi Phạm Hành Chính</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' } } } }
+        }
+    </script>
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        .modal-overlay { opacity: 0; visibility: hidden; transition: all 0.3s ease-out; }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content { transform: scale(0.95) translateY(-20px); opacity: 0; transition: all 0.3s; }
+        .modal-overlay.active .modal-content { transform: scale(1) translateY(0); opacity: 1; }
+        table th { position: sticky; top: 0; z-index: 10; background-color: #f8fafc; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; color: #64748b; }
+        .truncate-text { max-width: 250px; white-space: normal; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+        .min-w-cell { min-width: 120px; }
+        .suggestion-box { animation: slideDown 0.3s ease-out; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        .form-section-title { font-size: 0.875rem; font-weight: 600; color: #475569; text-transform: uppercase; margin-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased">
+    <input type="file" id="file-import" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleImportFile(event)">
+
+    <div class="max-w-[1500px] mx-auto p-4 sm:p-6">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-xl shadow-sm border border-slate-200">🛡️</div>
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Quản Lý Vi Phạm Hành Chính</h1>
+                    <p class="text-slate-500 font-medium text-sm mt-0.5">Hệ thống theo dõi hồ sơ & Tự động kiểm tra hạn</p>
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                <button onclick="document.getElementById('file-import').click()" class="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm text-sm">
+                    📥 Nhập Excel
+                </button>
+                <button onclick="exportToExcel()" class="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm text-sm">
+                    📤 Xuất Excel
+                </button>
+                <button onclick="showAddModal()" class="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-5 py-2 rounded-lg font-medium transition-all shadow-sm active:scale-95 text-sm">
+                    + Thêm Mới
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="summary">
+            </div>
+
+        <div class="bg-white p-2 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-2 items-center">
+            <div class="flex-1 relative w-full flex items-center">
+                <svg class="w-4 h-4 text-slate-400 absolute left-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input id="search-input" type="text" placeholder="Tìm kiếm tên cơ sở, nội dung vi phạm..." onkeyup="filterTable()" class="w-full pl-9 pr-4 py-2 bg-transparent border-none focus:ring-0 outline-none text-sm placeholder-slate-400 text-slate-700">
+            </div>
+            <div class="w-px h-6 bg-slate-200 hidden md:block"></div>
+            <div class="flex gap-2 w-full md:w-auto px-2 pb-2 md:pb-0 items-center">
+                <select id="status-filter" onchange="filterTable()" class="flex-1 md:w-44 px-3 py-2 bg-slate-50 border border-slate-200 text-slate-700 rounded-lg text-sm outline-none cursor-pointer">
+                    <option value="ALL">Tất cả trạng thái</option>
+                    <option value="DANG_CHO">⏳ Đang chờ xử lý</option>
+                    <option value="SAP_QUA_HAN">⚠️ Sắp quá hạn</option>
+                    <option value="QUA_HAN">❌ Quá hạn (7 ngày)</option>
+                    <option value="DA_XU_LY">✅ Đã xử lý</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto max-h-[650px]">
+                <table class="w-full text-sm text-left whitespace-nowrap" id="data-table">
+                    <thead>
+                        <tr>
+                            <th class="px-4 py-3 font-semibold border-b border-slate-200 w-12 text-center">STT</th>
+                            <th class="px-4 py-3 font-semibold border-b border-slate-200">Tên cơ sở</th>
+                            <th class="px-4 py-3 font-semibold border-b border-slate-200">Hành vi vi phạm</th>
+                            <th class="px-4 py-3 font-semibold border-b border-slate-200 text-right">Số tiền phạt</th>
+                            <th class="px-4 py-3 font-semibold border-b border-slate-200 border-l bg-slate-50">BB KT (Số; Ngày)</th>
+                            <th class="px-4 py-3 font-semibold border-b border-slate-200 border-l bg-slate-50">BB VP (Số; Ngày)</th>
+                            <th class="px-4 py-3 font-semibold border-b border-slate-200 border-l text-center">Tình trạng</th>
+                            <th class="px-4 py-3 font-semibold border-b border-slate-200 border-l text-center">Đã nộp phạt</th>
+                            <th class="px-4 py-3 font-semibold border-b border-slate-200 border-l text-center">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="divide-y divide-slate-100 text-slate-700"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal-overlay fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="modal-content bg-white w-full max-w-4xl rounded-2xl shadow-2xl max-h-[95vh] flex flex-col">
+            <div class="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50 rounded-t-2xl">
+                <h2 id="modal-title" class="text-lg font-bold text-slate-800">Thêm hồ sơ vi phạm mới</h2>
+                <button onclick="hideModal()" class="text-slate-400 hover:text-rose-600 w-8 h-8 rounded-full flex items-center justify-center transition-colors text-xl">✕</button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto bg-white">
+                <form id="entry-form" onsubmit="handleFormSubmit(event)" class="space-y-6">
+                    <input type="hidden" id="edit-index">
+
+                    <div>
+                        <div class="form-section-title">1. Thông tin chung & Hành vi</div>
+                        <div class="grid grid-cols-1 gap-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div class="sm:col-span-2">
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Tên cơ sở / Cá nhân vi phạm <span class="text-rose-500">*</span></label>
+                                    <input type="text" id="ten-co-so" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-brand-500 outline-none text-sm" required>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-600 mb-1">Đối tượng phạt</label>
+                                    <select id="doi-tuong-phat" class="w-full px-3 py-2.5 border border-slate-300 rounded-lg outline-none text-sm">
+                                        <option value="Tổ chức">Tổ chức</option><option value="Cá nhân">Cá nhân</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
+                                <label class="block text-xs font-semibold text-indigo-900 mb-1">Hành vi vi phạm (Gõ để tìm kiếm luật) <span class="text-rose-500">*</span></label>
+                                <input list="danh-sach-tu-dien" id="noi-dung-vi-pham" oninput="kiemTraGoiY()" autocomplete="off" class="w-full px-3 py-2.5 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 bg-white text-sm" placeholder="Bắt đầu gõ hành vi vi phạm..." required>
+                                <datalist id="danh-sach-tu-dien"></datalist>
+
+                                <div id="goi-y-box" class="suggestion-box hidden mt-3 bg-white border border-indigo-200 rounded-lg p-3 shadow-sm relative overflow-hidden">
+                                    <div class="absolute top-0 left-0 w-1 h-full bg-indigo-500"></div>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-y-2 gap-x-4 text-xs">
+                                        <div><span class="font-semibold text-slate-500">💰 Phạt tham khảo:</span> <span id="gy-muc-phat" class="text-rose-600 font-bold"></span></div>
+                                        <div><span class="font-semibold text-slate-500">⚖️ Thẩm quyền:</span> <span id="gy-tham-quyen" class="text-slate-700 font-medium"></span></div>
+                                        <div class="col-span-1 md:col-span-2"><span class="font-semibold text-slate-500">🛠️ Khắc phục HQ:</span> <span id="gy-kphq" class="text-slate-700"></span></div>
+                                        <div class="col-span-1 md:col-span-2"><span class="font-semibold text-slate-500">📜 Căn cứ:</span> <span id="gy-can-cu" class="text-slate-700"></span></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="form-section-title">2. Lập Biên Bản</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <div class="space-y-2 border-r border-slate-200 pr-4">
+                                <span class="text-xs font-semibold text-slate-700">📌 BB Kiểm tra/Phát hiện</span>
+                                <div><input type="text" id="so-bbkt" placeholder="Số BB" class="w-full px-3 py-2 mb-2 border border-slate-300 rounded-lg text-sm"></div>
+                                <div><input type="date" id="ngay-bbkt" title="Ngày lập BBKT" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-600"></div>
+                            </div>
+                            <div class="space-y-2 pl-2">
+                                <span class="text-xs font-semibold text-slate-700">🚨 BB Vi phạm (BB VP)</span>
+                                <div><input type="text" id="so-bbvp" placeholder="Số BBVP (*)" class="w-full px-3 py-2 mb-2 border border-slate-300 rounded-lg text-sm" required></div>
+                                <div><input type="date" id="ngay-bbvp" title="Ngày lập BBVP (*)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm text-slate-600" required></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="form-section-title">3. Xử lý & Thi Hành (Quyết định XPHC)</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="grid grid-cols-2 gap-3 bg-blue-50/40 p-3 rounded-xl border border-blue-100">
+                                <div><label class="block text-xs text-slate-500 mb-1">Số QĐ</label><input type="text" id="so-qdxphc" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"></div>
+                                <div><label class="block text-xs text-slate-500 mb-1">Ngày ra QĐ</label><input type="date" id="ngay-qdxphc" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"></div>
+                                <div class="col-span-2"><label class="block text-xs text-slate-500 mb-1">Số tiền phạt chính thức (VNĐ)</label><input type="number" id="tien-phat" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-rose-600"></div>
+                            </div>
+                            
+                            <div class="border border-slate-200 p-4 rounded-xl flex flex-col justify-center gap-4 bg-slate-50/50">
+                                <label class="flex items-center gap-3 cursor-pointer p-2 bg-white rounded-lg border border-slate-200 hover:border-brand-500 transition-colors">
+                                    <input type="checkbox" id="da-nop-phat" class="w-5 h-5 text-brand-600 rounded border-slate-300 cursor-pointer">
+                                    <span class="text-sm font-semibold text-slate-700">Đã nộp phạt xong</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-4 border-t border-slate-100 mt-4">
+                        <button type="button" onclick="hideModal()" class="px-5 py-2.5 text-slate-600 hover:bg-slate-100 rounded-lg font-medium text-sm transition-colors">Hủy</button>
+                        <button type="submit" class="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-lg font-medium text-sm shadow-md transition-colors">Lưu hồ sơ</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // =========================================================
+        // 1. DATA 83 HÀNH VI ĐẦY ĐỦ 100%
+        // =========================================================
+        const tuDienHanhVi = [
+            { hanhVi: "Làm hỏng băng rôn, khẩu hiệu, pa nô, áp phích, tranh ảnh tuyên truyền về phòng cháy, chữa cháy, cứu nạn, cứu hộ", mucPhat: "400.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc khôi phục lại tình trạng ban đầu", canCu: "Khoản 1, điều 6, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không tổ chức tuyên truyền, phổ biến, giáo dục kiến thức, pháp luật về phòng cháy, chữa cháy và cứu nạn, cứu hộ đối với các đối tượng quy định tại Điều 8 Luật Phòng cháy, chữa cháy và cứu nạn, cứu hộ", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 6, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không tổ chức bồi dưỡng nghiệp vụ phòng cháy, chữa cháy, cứu nạn, cứu hộ hằng năm cho đối tượng quy định tại các điểm c, d, đ, e và điểm g khoản 1 Điều 45 Luật Phòng cháy, chữa cháy và cứu nạn, cứu hộ đã được huấn luyện nghiệp vụ phòng cháy, chữa cháy, cứu nạn, cứu hộ", mucPhat: "5.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc tổ chức bồi dưỡng nghiệp vụ", canCu: "Khoản 3, điều 6, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sử dụng đối tượng quy định tại các điểm c, d, đ, e và điểm g khoản 1 Điều 45 Luật Phòng cháy, chữa cháy và cứu nạn, cứu hộ thực hiện nhiệm vụ phòng cháy, chữa cháy, cứu nạn, cứu hộ nhưng chưa có văn bản thông báo kết quả huấn luyện nghiệp vụ phòng cháy, chữa cháy, cứu nạn, cứu hộ", mucPhat: "7.000.000", thamQuyen: "Chỉ huy đội (Đội trưởng)", khacPhucHauQua: "Buộc tổ chức huấn luyện nghiệp vụ", canCu: "Điều 4, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Ban hành nội quy phòng cháy, chữa cháy, cứu nạn, cứu hộ không đủ nội dung theo quy định hoặc không phù hợp với đặc điểm, tính chất hoạt động của cơ sở, phương tiện giao thông", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 7, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Niêm yết nội quy, biển báo, biển cấm, biển chỉ dẫn về phòng cháy, chữa cháy, cứu nạn, cứu hộ không đúng vị trí quy định", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 7, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì nội quy, biển báo, biển cấm, biển chỉ dẫn về phòng cháy, chữa cháy, cứu nạn, cứu hộ đã được niêm yết", mucPhat: "5.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 7, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không ban hành hoặc không niêm yết nội quy, biển báo, biển cấm, biển chỉ dẫn về phòng cháy, chữa cháy, cứu nạn, cứu hộ.", mucPhat: "7.000.000", thamQuyen: "Chỉ huy đội (Đội trưởng)", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 7, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Thành lập Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở, Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ chuyên ngành không bảo đảm số người theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Cơ quan, tổ chức hoạt động trong cơ sở không cử người tham gia Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không phân công người thực hiện nhiệm vụ phòng cháy, chữa cháy, cứu nạn, cứu hộ tại cơ sở thuộc diện quản lý về phòng cháy, chữa cháy có dưới 20 người thường xuyên làm việc", mucPhat: "7.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bố trí địa điểm trực chữa cháy, cứu nạn, cứu hộ của Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở, Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ chuyên ngành", mucPhat: "7.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bố trí lực lượng, phương tiện của Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở, Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ chuyên ngành trực chữa cháy, cứu nạn, cứu hộ hằng ngày", mucPhat: "9.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không thành lập Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 4, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không thành lập Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ chuyên ngành", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 5, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không đủ tài liệu trong hồ sơ về phòng cháy, chữa cháy, cứu nạn, cứu hộ", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 9, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không lập hồ sơ về phòng cháy, chữa cháy, cứu nạn, cứu hộ", mucPhat: "6.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 9, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không xuất trình hồ sơ về phòng cháy, chữa cháy, cứu nạn, cứu hộ phục vụ kiểm tra, thanh tra về phòng cháy, chữa cháy", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 5, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Gửi báo cáo kết quả thực hiện công tác phòng cháy, chữa cháy, cứu nạn, cứu hộ của cơ sở không đúng thời hạn;", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 10, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không thực hiện yêu cầu về phòng cháy, chữa cháy, cứu nạn, cứu hộ tại văn bản kiến nghị để cơ sở khắc phục những tồn tại, hạn chế", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 1, điều 10, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bố trí người có thẩm quyền làm việc với người có thẩm quyền kiểm tra, thanh tra sau khi đã nhận được thông báo kiểm tra, quyết định thanh tra về phòng cháy, chữa cháy;", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 5, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Không gửi báo cáo kết quả thực hiện công tác phòng cháy, chữa cháy, cứu nạn, cứu hộ của cơ sở", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 10, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không thực hiện tự kiểm tra về phòng cháy, chữa cháy định kỳ", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 10, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không chấp hành việc đình chỉ hoạt động có thời hạn tại quyết định xử phạt vi phạm hành chính trong lĩnh vực phòng cháy, chữa cháy và cứu nạn, cứu hộ của người có thẩm quyền", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 4, điều 10, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không chấp hành quyết định tạm đình chỉ, quyết định đình chỉ hoạt động theo quy định của pháp luật về phòng cháy, chữa cháy và cứu nạn, cứu hộ.", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 4, điều 10, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sử dụng nguồn lửa, nguồn nhiệt, thiết bị, dụng cụ sinh lửa, sinh nhiệt mà không bảo đảm khoảng cách phòng cháy, chữa cháy theo quy định", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 11, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sử dụng nguồn lửa, nguồn nhiệt, thiết bị, dụng cụ sinh lửa, sinh nhiệt ở những khu vực có quy định cấm", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 11, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Hàn, cắt kim loại mà không có biện pháp phòng cháy, chữa cháy theo quy định", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 11, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Lắp đặt, sử dụng dây dẫn điện, thiết bị điện, thiết bị đóng ngắt, bảo vệ không bảo đảm an toàn phòng cháy", mucPhat: "7.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 12, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì thiết bị điện phòng nổ đã được trang bị, lắp đặt", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 12, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt, sử dụng thiết bị điện phòng nổ", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 12, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không kiểm tra, bảo trì định kỳ hệ thống tiếp địa, chống sét", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 13, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Lắp đặt hệ thống tiếp địa, chống sét không bảo đảm theo quy định", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 13, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hệ thống tiếp địa, chống sét đã được lắp đặt", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 13, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không lắp đặt hệ thống tiếp địa, chống sét cho nhà, công trình", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 13, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sắp xếp hoặc bố trí chất, hàng hóa nguy hiểm về cháy, nổ không bảo đảm theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 14, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Bảo quản chất, hàng hóa nguy hiểm về cháy, nổ vượt quá số lượng, khối lượng theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc giảm số lượng, khối lượng", canCu: "Điểm b, khoản 1, điều 14, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Bảo quản hoặc sử dụng chất, hàng hóa nguy hiểm về cháy, nổ không đúng nơi quy định", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc di chuyển đúng nơi quy định", canCu: "Khoản 2, điều 14, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Để hình thành môi trường nguy hiểm cháy, nổ có chi số nguy hiểm cháy, nổ vượt quá giới hạn dưới của giới hạn nồng độ bắt cháy", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 14, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Tàng trữ trái phép chất, hàng hóa nguy hiểm về cháy, nổ nhưng chưa đến mức truy cứu trách nhiệm hình sự", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Tịch thu tang vật", canCu: "Khoản 4, điều 14, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sử dụng trái phép chất, hàng hóa nguy hiểm về cháy, nổ nhưng chưa đến mức truy cứu trách nhiệm hình sự", mucPhat: "47.500.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Tịch thu tang vật", canCu: "Khoản 5, điều 14, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì thiết bị phát hiện rò rỉ chất, hàng hóa nguy hiểm về cháy, nổ đã được trang bị, lắp đặt", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì thiết bị, hệ thống chống tĩnh điện đã được trang bị, lắp đặt.", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt thiết bị phát hiện rò rỉ chất, hàng hóa nguy hiểm về cháy, nổ", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt thiết bị, hệ thống chống tĩnh điện", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "San, chiết, nạp chất, hàng hóa nguy hiểm về cháy, nổ không đúng nơi quy định", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 3, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "San, chiết, nạp chất, hàng hóa nguy hiểm về cháy, nổ sang thiết bị chứa không đúng chủng loại hoặc không phù hợp với loại chất, hàng hóa nguy hiểm về cháy, nổ", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Tịch thu tang vật", canCu: "Điểm b, khoản 3, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sản xuất hoặc kinh doanh trái phép chất, hàng hóa nguy hiểm về cháy, nổ nhưng chưa đến mức truy cứu trách nhiệm hình sự", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Tịch thu tang vật; Tước giấy phép", canCu: "Khoản 4, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sắp xếp, bố trí chất, hàng hóa nguy hiểm về cháy, nổ trên phương tiện vận chuyển không bảo đảm an toàn phòng cháy", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì các điều kiện an toàn về phòng cháy của phương tiện giao thông khi vận chuyển chất, hàng hóa nguy hiểm về cháy, nổ", mucPhat: "6.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc duy trì các điều kiện an toàn", canCu: "Điểm a, khoản 2, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Vận chuyển hàng hóa khác cùng với chất, hàng hóa nguy hiểm về cháy, nổ mà không được phép trên cùng một phương tiện giao thông", mucPhat: "6.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Chở người không có nhiệm vụ trên phương tiện giao thông vận chuyền chất, hàng hóa nguy hiểm về cháy, nổ", mucPhat: "6.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 2, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không thực hiện các điều kiện bảo đảm an toàn về phòng cháy, chữa cháy khi bốc, dỡ, bơm, chuyển chất, hàng hóa nguy hiểm về cháy, nổ ra khỏi phương tiện giao thông", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 3, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì các biện pháp an toàn phòng cháy cho thiết bị, đường ống chuyển chất khí, chất lỏng dễ cháy, nổ", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì biện pháp an toàn", canCu: "Điểm b, khoản 3, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Bốc, dỡ, bơm, chuyển chất, hàng hóa nguy hiểm về cháy, nổ tại địa điểm không bảo đảm an toàn phòng cháy.", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc bốc dỡ tại địa điểm an toàn", canCu: "Điểm c, khoản 3, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Mua bảo hiểm cháy, nổ bắt buộc không đủ đối tượng bảo hiểm cháy, nổ bắt buộc hoặc không đúng mức phí bảo hiểm cháy, nổ bắt buộc theo quy định đối với cơ sở phải mua bảo hiểm cháy, nổ bắt buộc", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc mua bảo hiểm", canCu: "Khoản 1, điều 6, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Nộp từ 50% đến dưới 100% tổng số tiền được trích cho hoạt động phòng cháy, chữa cháy, cứu nạn, cứu hộ từ bảo hiểm cháy, nổ bắt buộc theo quy định", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 17, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Nộp dưới 50% tổng số tiền được trích cho hoạt động phòng cháy, chữa cháy, cứu nạn, cứu hộ từ bảo hiểm cháy, nổ bắt buộc theo quy định", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 17, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không mua bảo hiểm cháy, nổ bắt buộc đối với cơ sở có nguy hiểm về cháy, nổ thuộc nhóm 2 theo quy định của pháp luật về phòng cháy, chữa cháy và cứu nạn, cứu hộ", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 17, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không mua bảo hiểm cháy, nổ bắt buộc đối với cơ sở có nguy hiểm về cháy, nổ thuộc nhóm 1 theo quy định của pháp luật về phòng cháy, chữa cháy và cứu nạn, cứu hộ", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 4, điều 17, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không nộp tiền được trích cho hoạt động phòng cháy, chữa cháy, cứu nạn, cứu hộ từ bảo hiểm cháy, nổ bắt buộc theo quy định", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 4, điều 17, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Chuyển đổi, bổ sung công năng hoặc cải tạo công trình, hạng mục công trình trong quá trình sử dụng thuộc điện phải thẩm định thiết kế về phòng cháy và chữa cháy khi chưa có văn bản thẩm định thiết kế về phòng cháy và chữa cháy của cơ quan quản lý chuyên ngành", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 18, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Hoán cải phương tiện giao thông trong quá trình sử dụng thuộc diện phải thẩm định thiết kế về phòng cháy và chữa cháy khỉ chưa có văn bản thẩm định thiết kế về phòng cháy và chữa cháy của cơ quan quản lý chuyên ngành", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 18, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Thi công xây dựng công trình, hạng mục công trình hoặc sản xuất, lắp ráp, đóng mới phương tiện giao thông thuộc diện phải thẩm định thiết kế về phòng cháy và chữa cháy khi chưa có văn bản thẩm định thiết kế về phòng cháy và chữa cháy của cơ quan quản lý chuyên ngành", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 18, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Đưa công trình, hạng mục công trình, phương tiện giao thông đã được thẩm duyệt thiết kế hoặc thẩm định thiết kế về phòng cháy và chữa cháy vào khai thác, sử dụng khi chưa có văn bản chấp thuận kết quả nghiệm thu về phòng cháy và chữa cháy của cơ quan quản lý chuyên ngành", mucPhat: "40.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 18, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Đưa công trình, hạng mục công trình, phương tiện giao thông thuộc diện phải thẩm định thiết kế về phòng cháy và chữa cháy vào sử dụng, hoạt động khỉ chưa có - 14 văn bản thẩm định thiết kế về phòng cháy và chữa cháy và văn bản chấp thuận kết quả nghiệm thu về phòng cháy và chữa cháy của cơ quan quản lý chuyên ngành", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 4, điều 18, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Tẩy xóa, sửa chữa làm sai lệch nội dung giấy phép lưu thông phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc nộp lại giấy phép", canCu: "Khoản 1, điều 19, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Kinh doanh, đưa phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy vào lưu thông khi chưa được cấp phép", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc thu hồi phương tiện", canCu: "Điểm a, khoản 2, điều 19, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sử dụng hồ sơ, tài liệu sai sự thật để đề nghị cấp giấy phép lưu thông phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc nộp lại giấy phép", canCu: "Điểm b, khoản 2, điều 19, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị phương tiện chữa cháy thông dụng, dụng cụ phá dỡ thô sơ không bảo đảm theo quy định", mucPhat: "1.500.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc trang bị phương tiện", canCu: "Khoản 1, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt phương tiện chữa cháy thông dụng, dụng cụ phá đỡ thô sơ", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc trang bị phương tiện", canCu: "Khoản 2, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị, lắp đặt đèn, phương tiện chiếu sáng sự cố, chỉ dẫn thoát nạn không bảo đảm theo quy định.", mucPhat: "6.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc trang bị đèn chiếu sáng sự cố", canCu: "Khoản 3, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ cho Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở, Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ chuyên ngành không bảo đảm theo quy định", mucPhat: "9.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc trang bị phương tiện", canCu: "Khoản 4, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt đèn, phương tiện chiếu sáng sự cố, chỉ dẫn thoát nạn", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc trang bị đèn chiếu sáng sự cố", canCu: "Khoản 5, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ cho Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc trang bị phương tiện", canCu: "Khoản 6, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ cho Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ chuyên ngành", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc trang bị phương tiện", canCu: "Khoản 7, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị, lắp đặt thiết bị thuộc hệ thống báo cháy không bảo đảm theo quy định;", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc trang bị thiết bị báo cháy", canCu: "Điểm a, khoản 8, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị, lắp đặt thiết bị thuộc hệ thống chữa cháy không bảo đảm theo quy định.", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc trang bị thiết bị chữa cháy", canCu: "Điểm b, khoản 8, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị phương tiện chữa cháy, cứu nạn, cứu hộ cơ giới không bảo đảm số lượng hoặc không bảo đảm yêu cầu kĩ thuật theo quy định", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc trang bị xe chữa cháy/cơ giới", canCu: "Khoản 1, điều 8, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt hệ thống báo cháy", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc trang bị hệ thống báo cháy", canCu: "Điểm a, khoản 9, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt hệ thống chữa cháy", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc trang bị hệ thống chữa cháy", canCu: "Điểm b, khoản 9, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị phương tiện chữa cháy, cứu nạn, cứu hộ cơ giới.", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc trang bị xe chữa cháy/cơ giới", canCu: "Điểm c, khoản 9, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Tự ý di chuyển, che khuất phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ đã được trang bị, lắp đặt.", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc khôi phục lại tình trạng ban đầu", canCu: "Khoản 1, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì đủ số lượng hoặc không bảo đảm yêu cầu kĩ thuật theo quy định của phương tiện chữa cháy thông dụng, dụng cụ phá dỡ thô sơ đã được trang bị, lắp đặt;", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc duy trì đủ số lượng", canCu: "Khoản 1, điều 9, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Không duy trì trữ lượng nước chữa cháy theo quy định.", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc duy trì đủ lượng nước", canCu: "Khoản 1, điều 9, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Không duy trì hoạt động của đèn, phương tiện chiếu sáng sự cố, chỉ dẫn thoát nạn đã được trang bị, lắp đặt", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc duy trì đèn chiếu sáng sự cố", canCu: "Điểm a, khoản 3, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hoạt động của thiết bị báo cháy độc lập đã được trang bị, lắp đặt", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc duy trì thiết bị báo cháy", canCu: "Điểm b, khoản 3, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hoạt động của thiết bị thuộc hệ thống báo cháy đã được trang bị, lắp đặt", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc duy trì thiết bị", canCu: "Điểm a, khoản 4, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hoạt động của thiết bị thuộc hệ thống chữa cháy đã được trang bị, lắp đặt", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc duy trì thiết bị", canCu: "Điểm b, khoản 4, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không đưa phương tiện chữa cháy, cứu nạn, cứu hộ cơ giới vào trực chữa cháy, cứu nạn, cứu hộ", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 5, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hoạt động của hệ thống báo cháy đã được trang bị, lắp đặt", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc duy trì hệ thống báo cháy", canCu: "Điểm a, khoản 6, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hoạt động của hệ thống chữa cháy đã được trang bị, lắp đặt", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc duy trì hệ thống chữa cháy", canCu: "Điểm b, khoản 6, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bảo quản, bảo dưỡng phương tiện chữa cháy thông dụng hoặc thiết bị báo cháy độc lập", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Bảo quản, bảo dưỡng hệ thống báo cháy không bảo đảm nội dung theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Bảo quản, bảo dưỡng hệ thống chữa cháy không bảo đảm nội dung theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 1, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Bảo quản, bảo dưỡng phương tiện chữa cháy, cứu nạn, cứu hộ cơ giới không bảo đảm nội dung theo quy định.", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm d, khoản 1, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bảo quản, bảo dưỡng phương tiện chữa cháy, cứu nạn, cứu hộ cơ giới", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bảo dưỡng hệ thống báo cháy", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 3, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bảo dưỡng hệ thống chữa cháy.", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 3, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị, lắp đặt thiết bị thuộc hệ thống thông gió thoát khói không bảo đảm theo quy định", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc trang bị hệ thống thoát khói", canCu: "Điểm a, khoản 1, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị, lắp đặt thiết bị thuộc hệ thống tạo áp suất dư cho khu vực cần chống nhiễm khói không bảo đảm theo quy định", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc trang bị hệ thống tạo áp suất", canCu: "Điểm b, khoản 1, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì thông gió tự nhiên hoặc không duy trì hệ thống thông gió thoát khói đã được trang bị, lắp đặt", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì hệ thống thoát khói", canCu: "Điểm a, khoản 2, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hệ thống tạo áp suất dư cho khu vực cần chống nhiễm khói đã được trang bị, lắp đặt", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì hệ thống", canCu: "Điểm b, khoản 2, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì giải pháp thông gió cho khu vực sản xuất, bảo quản, kinh doanh, sử dụng chất, hàng hóa nguy hiểm về cháy, nổ đã được trang bị, lắp đặt", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì giải pháp thông gió", canCu: "Khoản 3, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không có giải pháp thông gió tự nhiên hoặc không có giải pháp thông gió thoát khói", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 4, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt hệ thống tạo áp suất dư cho khu vực phải trang bị, lắp đặt", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 4, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Lắp gương trên đường thoát nạn", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc tháo gương", canCu: "Điểm a, khoản 1, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Cửa đi trên lối ra thoát nạn không mở theo chiều thoát nạn", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc mở cửa đúng chiều", canCu: "Điểm b, khoản 1, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Để vật tư, hàng hóa, phương tiện giao thông, vật dụng, thiết bị khác cản trở lối thoát nạn hoặc đường thoát nạn", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc di chuyển vật tư cản trở", canCu: "Khoản 2, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì lối thoát nạn hoặc đường thoát nạn của gian phòng, khu vực", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì lối thoát nạn", canCu: "Điểm a, khoản 4, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không có đủ lối thoát nạn hoặc đường thoát nạn của gian phòng, khu vực", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc bảo đảm đủ lối thoát nạn", canCu: "Điểm b, khoản 4, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì lối thoát nạn hoặc đường thoát nạn của nhà, công trình", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc duy trì lối thoát nạn", canCu: "Điểm a, khoản 5, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không có đủ lối thoát nạn hoặc đường thoát nạn của nhà, công trình", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc bảo đảm đủ lối thoát nạn", canCu: "Điểm b, khoản 5, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Để vật tư, hàng hóa, phương tiện giao thông, vật dụng, thiết bị khác không bảo đảm khoảng cách phòng cháy, chữa cháy.", mucPhat: "3.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc di chuyển bảo đảm khoảng cách", canCu: "Khoản 1, điều 25, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì vật liệu ngăn cháy hoặc cửa ngăn cháy hoặc vách ngăn cháy hoặc màn ngăn cháy hoặc rèm ngăn cháy hoặc vật liệu chống cháy đã được trang bị, lắp đặt", mucPhat: "6.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc duy trì vật liệu ngăn cháy", canCu: "Khoản 1, điều 12, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Không dọn sạch chất dễ cháy nằm trong hành lang an toàn tuyến ống dẫn dầu mỏ, khí đốt và sản phẩm dầu mỏ", mucPhat: "9.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 3, điều 25, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Lắp đặt ống dẫn khí cháy, chất lỏng cháy tại khu vực không được phép hoặc không bảo đảm an toàn phòng cháy.", mucPhat: "9.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 3, điều 25, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì khoảng cách phòng cháy, chữa cháy giữa nhà, công trình", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì khoảng cách PCCC", canCu: "Khoản 2, điều 12, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt vật liệu ngăn cháy hoặc cửa ngăn cháy hoặc vách ngăn cháy hoặc màn ngăn cháy hoặc rèm ngăn cháy hoặc vật liệu chống cháy", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì vật liệu ngăn cháy", canCu: "Khoản 3, điều 12, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Xây dựng nhà, công trình không bảo đảm khoảng cách phòng cháy, chữa cháy", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 6, điều 25, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Xây dựng phương án chữa cháy, cứu nạn, cứu hộ của cơ sở, phương tiện giao thông không bảo đảm nội dung theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không cập nhật, bổ sung hoặc không chinh lý phương án chữa cháy, cứu nạn, cứu hộ của cơ sở, phương tiện giao thông", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không phê duyệt hoặc phê duyệt phương án chữa cháy, cứu nạn, cứu hộ của cơ sở, phương tiện giao thông không đúng thẩm quyền", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 1, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không thực tập hết các tình huống trong phương án chữa cháy, cứu nạn, cứu hộ của cơ sở, phương tiện giao thông", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bố trí đủ lực lượng hoặc phương tiện thuộc phạm vi quản lý tham gia thực tập phương án chữa cháy, cứu nạn, cứu hộ của cơ quan Công an khi được người có thẩm quyền huy động.", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không phối hợp xây dựng phương án chữa cháy, cứu nạn, cứu hộ của cơ quan Công an theo yêu cầu của cơ quan Công an có thẩm quyền", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 3, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không phối hợp tham gia thực tập phương án chữa cháy, cứu nạn, cứu hộ của cơ quan Công an theo yêu cầu của cơ quan Công an có thẩm quyền", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 3, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không tổ chức thực tập phương án chữa cháy, cứu nạn, cứu hộ của cơ sở, phương tiện giao thông", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 4, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không xây dựng phương án chữa cháy, cứu nạn, cứu hộ của cơ sở, phương tiện giao thông.", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 5, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Tự ý vào khu vực chữa cháy, cứu nạn, cứu hộ khi không được phép của người có thẩm quyền", mucPhat: "750.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không chấp hành mệnh lệnh hoặc quyết định huy động tham gia chữa cháy, cứu nạn, cứu hộ của người có thẩm quyền", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không tổ chức thực hiện khắc phục hậu quả vụ cháy trong điều kiện, khả năng cho phép", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Ngăn cản hoặc cản trở việc thông tin báo cháy, báo tình huống cứu nạn, cứu hộ.", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Lấn chiếm hoặc bố trí vật cản gây cản trở hoạt động của phương tiện chữa cháy, cứu nạn, cứu hộ cơ giới", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 4, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Cố ý báo cháy giả hoặc cố ý báo tình huống cứu nạn, cứu hộ giả", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 4, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không báo cháy hoặc không báo tình huống cứu nạn, cứu hộ", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 4, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Cản trở lực lượng và phương tiện chữa cháy, cứu nạn, cứu hộ thực hiện chữa cháy, cứu nạn, cứu hộ", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 5, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Lợi dụng việc tham gia chữa cháy, cứu nạn, cứu hộ để xâm phạm đến lợi ích của Nhà nước hoặc quyền, lợi ích hợp pháp của cơ quan, tổ chức, cá nhân", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 5, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì đường giao thông cho phương tiện chữa cháy, cứu nạn, cứu hộ hoạt động", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì đường giao thông", canCu: "Khoản 6, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Khai báo không đầy đủ thông tin của cơ sở vào hệ thống Cơ sở dữ liệu về phòng cháy, chứa cháy, cứu nạn, cứu hộ và truyền tin báo cháy theo quy định", mucPhat: "750.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Khai báo không đầy đủ thông tin của phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy vào cơ sở dữ liệu của cơ quan quản lý chuyên ngành khi lưu thông phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy theo quy định", mucPhat: "750.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không cập nhật thông tin khi cơ sở có thay đổi so với thông tin đã khai báo trước đó vào hệ thống Cơ sở dữ liệu về phòng cháy, cháy, cứu nạn, cứu hộ và truyền tin báo cháy", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không chi trả chi phí duy trì hoạt động của thiết bị truyền tin báo cháy để kết nối với hệ thống Cơ sở dữ liệu về phòng cháy, chữa cháy, cứu nạn, cứu hộ và truyền tin báo cháy", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không khai báo thông tin của phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy vào cơ sở dữ liệu của cơ quan quản lý chuyên ngành khi lưu thông phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không khai báo thông tin của cơ sở vào hệ thống Cơ sở dữ liệu về phòng cháy, chữa cháy, cứu nạn, cứu hộ và truyền tin báo cháy", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 4, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Cố ý ngắt kết nối hoặc không khắc phục các hư hỏng dẫn đến làm mất khả năng kết nối của thiết bị truyền tin báo cháy với hệ thống Cơ sở dữ liệu về phòng cháy, chữa cháy, cứu nạn, cứu hộ và truyền tin báo cháy", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 5, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt thiết bị truyền tin báo cháy", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 6, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không kết nối thiết bị truyền tin báo cháy với hệ thống Cơ sở dữ liệu về phòng cháy, chữa cháy, cứu nạn, cứu hộ và truyền tin báo cháy theo quy định", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 6, điều 28, Nghị định số 106/2025/NĐ-CP" }
+        ];
+
+        function khoiTaoTuDien() {
+            const datalist = document.getElementById('danh-sach-tu-dien');
+            tuDienHanhVi.forEach(item => {
+                const option = document.createElement('option');
+                option.value = item.hanhVi;
+                datalist.appendChild(option);
+            });
+        }
+
+        function kiemTraGoiY() {
+            const inputVal = document.getElementById('noi-dung-vi-pham').value;
+            const box = document.getElementById('goi-y-box');
+            const match = tuDienHanhVi.find(item => item.hanhVi === inputVal);
+            
+            if (match) {
+                let tienHienThi = match.mucPhat ? Number(match.mucPhat.replace(/\D/g, '')).toLocaleString() + ' ₫' : '--';
+                document.getElementById('gy-muc-phat').innerText = tienHienThi;
+                document.getElementById('gy-tham-quyen').innerText = match.thamQuyen || "--";
+                document.getElementById('gy-kphq').innerText = match.khacPhucHauQua || "Không";
+                document.getElementById('gy-can-cu').innerText = match.canCu || "--";
+                box.classList.remove('hidden');
+                
+                const tienPhatInput = document.getElementById('tien-phat');
+                if(!tienPhatInput.value && match.mucPhat) {
+                    tienPhatInput.value = match.mucPhat.replace(/\D/g, ''); 
+                }
+            } else {
+                box.classList.add('hidden');
+            }
+        }
+
+        // =========================================================
+        // 2. LOGIC LƯU TRỮ & XỬ LÝ DỮ LIỆU
+        // =========================================================
+        let data = [];
+        function initData() { const saved = localStorage.getItem('ql_bbvp_final'); if (saved) data = JSON.parse(saved); }
+        function saveData() { data.forEach((item, idx) => item.stt = idx + 1); localStorage.setItem('ql_bbvp_final', JSON.stringify(data)); }
+
+        function getBusinessDays(startDateStr, endDateStr) {
+            let count = 0; let curDate = new Date(startDateStr); const end = new Date(endDateStr);
+            curDate.setHours(0,0,0,0); end.setHours(0,0,0,0);
+            while (curDate < end) {
+                curDate.setDate(curDate.getDate() + 1);
+                const day = curDate.getDay(); if (day !== 0 && day !== 6) count++;
+            }
+            return count;
+        }
+
+        function getStatusInfo(item) {
+            if (!item.ngayBBVP) return { text: 'Thiếu ngày', bg: 'bg-slate-100', textCol: 'text-slate-500', code: 'THIEU_NGAY' };
+            if (item.ngayQDXPHC) {
+                const days = getBusinessDays(item.ngayBBVP, item.ngayQDXPHC);
+                if (days > 7) return { text: `Đã xử lý (Trễ ${days}đ)`, bg: 'bg-emerald-50', textCol: 'text-emerald-700', code: 'DA_XU_LY' };
+                return { text: `Đã xử lý (${days}đ)`, bg: 'bg-emerald-100', textCol: 'text-emerald-700', code: 'DA_XU_LY' };
+            } else {
+                const passedDays = getBusinessDays(item.ngayBBVP, new Date().toISOString().split('T')[0]);
+                if (passedDays > 7) return { text: `Quá hạn (${passedDays}đ)`, bg: 'bg-rose-100', textCol: 'text-rose-700', code: 'QUA_HAN' };
+                if (passedDays >= 5) return { text: `Sắp quá hạn (${passedDays}/7đ)`, bg: 'bg-amber-100', textCol: 'text-amber-700', code: 'SAP_QUA_HAN' };
+                return { text: `Đang chờ (${passedDays}/7đ)`, bg: 'bg-blue-50', textCol: 'text-blue-700', code: 'DANG_CHO' };
+            }
+        }
+
+        function formatDate(dateStr) { 
+            if (!dateStr) return '<span class="text-slate-300">--</span>'; 
+            const d = new Date(dateStr); return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`; 
+        }
+
+        function renderSummary(displayData) {
+            const summary = document.getElementById('summary');
+            let countWarning = 0, countOverdue = 0;
+            let totalFine = displayData.reduce((sum, item) => sum + Number(item.tienPhat || 0), 0);
+            displayData.forEach(item => {
+                const code = getStatusInfo(item).code;
+                if(code === 'SAP_QUA_HAN') countWarning++;
+                if(code === 'QUA_HAN') countOverdue++;
+            });
+            summary.innerHTML = `
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
+                    <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xl">📋</div>
+                    <div><p class="text-xs font-medium text-slate-500 uppercase">Tổng hiển thị</p><p class="text-2xl font-bold text-slate-800">${displayData.length}</p></div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-amber-200 bg-amber-50/30 flex items-center gap-4">
+                    <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-xl">⚠️</div>
+                    <div><p class="text-xs font-medium text-slate-500 uppercase">Sắp đến hạn</p><p class="text-2xl font-bold text-amber-600">${countWarning}</p></div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-rose-200 bg-rose-50/30 flex items-center gap-4">
+                    <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-xl">❌</div>
+                    <div><p class="text-xs font-medium text-slate-500 uppercase">Đang quá hạn</p><p class="text-2xl font-bold text-rose-600">${countOverdue}</p></div>
+                </div>
+                <div class="bg-white p-4 rounded-xl shadow-sm border border-emerald-200 bg-emerald-50/30 flex items-center gap-4">
+                    <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-xl">💰</div>
+                    <div><p class="text-xs font-medium text-slate-500 uppercase">Tổng tiền phạt</p><p class="text-xl font-bold text-emerald-700">${totalFine.toLocaleString('vi-VN')} ₫</p></div>
+                </div>
+            `;
+        }
+
+        // =========================================================
+        // 3. RENDER BẢNG 9 CỘT
+        // =========================================================
+        function renderTable() {
+            const tbody = document.getElementById('table-body'); tbody.innerHTML = '';
+            const search = document.getElementById('search-input').value.toLowerCase();
+            const statusF = document.getElementById('status-filter').value;
+            
+            let filtered = data.filter(item => {
+                const textMatch = !search || item.tenCoSo.toLowerCase().includes(search) || item.noiDungViPham.toLowerCase().includes(search);
+                const statMatch = statusF === 'ALL' || getStatusInfo(item).code === statusF;
+                return textMatch && statMatch;
+            });
+
+            if(filtered.length === 0) { 
+                tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-8 text-center text-slate-500">Chưa có dữ liệu.</td></tr>`; 
+                renderSummary(filtered); return; 
+            }
+
+            filtered.forEach((item) => {
+                const idx = data.indexOf(item);
+                const st = getStatusInfo(item);
+                const statusTag = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold border border-transparent ${st.bg} ${st.textCol}">${st.text}</span>`;
+                
+                const checkNopPhat = item.daNopPhat 
+                    ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">✓ Đã nộp</span>' 
+                    : '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500">Chưa nộp</span>';
+
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-50 border-b border-slate-100">
+                        <td class="px-4 py-3 text-center">${item.stt}</td>
+                        <td class="px-4 py-3 font-medium min-w-cell">${item.tenCoSo}</td>
+                        <td class="px-4 py-3 text-slate-600"><div class="truncate-text" title="${item.noiDungViPham}">${item.noiDungViPham}</div></td>
+                        <td class="px-4 py-3 text-rose-600 font-bold text-right">${item.tienPhat ? Number(item.tienPhat).toLocaleString() + ' ₫' : '--'}</td>
+                        
+                        <td class="px-4 py-3 border-l bg-slate-50/50 min-w-cell">
+                            <div class="font-medium text-slate-800">${item.soBBKT || '--'}</div><div class="text-xs text-slate-500">${formatDate(item.ngayBBKT)}</div>
+                        </td>
+                        <td class="px-4 py-3 border-l bg-slate-50/50 min-w-cell">
+                            <div class="font-bold text-slate-900">${item.soBBVP || '--'}</div><div class="text-xs text-slate-500 mb-1">${formatDate(item.ngayBBVP)}</div>
+                        </td>
+                        
+                        <td class="px-4 py-3 border-l text-center">${statusTag}</td>
+                        <td class="px-4 py-3 border-l text-center">${checkNopPhat}</td>
+                        <td class="px-4 py-3 border-l text-center">
+                            <div class="flex justify-center gap-1">
+                                <button onclick="editRow(${idx})" class="text-blue-600 bg-blue-50 hover:bg-blue-100 p-1.5 rounded-lg" title="Sửa hồ sơ">✏️</button>
+                                <button onclick="deleteRow(${idx})" class="text-rose-600 bg-rose-50 hover:bg-rose-100 p-1.5 rounded-lg" title="Xóa hồ sơ">🗑️</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            renderSummary(filtered);
+        }
+
+        // ================= CRUD =================
+        function deleteRow(idx) { if (confirm("Xóa hồ sơ này?")) { data.splice(idx, 1); saveData(); renderTable(); } }
+        
+        function editRow(idx) {
+            const item = data[idx];
+            document.getElementById('edit-index').value = idx;
+            document.getElementById('ten-co-so').value = item.tenCoSo;
+            document.getElementById('doi-tuong-phat').value = item.doiTuongPhat || 'Tổ chức';
+            document.getElementById('noi-dung-vi-pham').value = item.noiDungViPham;
+            document.getElementById('so-bbkt').value = item.soBBKT || '';
+            document.getElementById('ngay-bbkt').value = item.ngayBBKT || '';
+            document.getElementById('so-bbvp').value = item.soBBVP || '';
+            document.getElementById('ngay-bbvp').value = item.ngayBBVP || '';
+            document.getElementById('so-qdxphc').value = item.soQDXPHC || '';
+            document.getElementById('ngay-qdxphc').value = item.ngayQDXPHC || '';
+            document.getElementById('tien-phat').value = item.tienPhat || '';
+            document.getElementById('da-nop-phat').checked = item.daNopPhat || false;
+            
+            kiemTraGoiY();
+            document.getElementById('modal').classList.add('active'); 
+        }
+
+        function showAddModal() { 
+            document.getElementById('entry-form').reset();
+            document.getElementById('edit-index').value = ''; 
+            document.getElementById('ngay-bbvp').value = new Date().toISOString().split('T')[0];
+            document.getElementById('goi-y-box').classList.add('hidden');
+            document.getElementById('modal').classList.add('active'); 
+        }
+        function hideModal() { document.getElementById('modal').classList.remove('active'); }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+            const editIndex = document.getElementById('edit-index').value;
+            const formData = {
+                tenCoSo: document.getElementById('ten-co-so').value,
+                doiTuongPhat: document.getElementById('doi-tuong-phat').value,
+                noiDungViPham: document.getElementById('noi-dung-vi-pham').value,
+                soBBKT: document.getElementById('so-bbkt').value, ngayBBKT: document.getElementById('ngay-bbkt').value,
+                soBBVP: document.getElementById('so-bbvp').value, ngayBBVP: document.getElementById('ngay-bbvp').value,
+                soQDXPHC: document.getElementById('so-qdxphc').value, ngayQDXPHC: document.getElementById('ngay-qdxphc').value,
+                tienPhat: Number(document.getElementById('tien-phat').value),
+                daNopPhat: document.getElementById('da-nop-phat').checked
+            };
+            if (editIndex !== '') { data[editIndex] = formData; } else { data.unshift(formData); }
+            saveData(); hideModal(); renderTable();
+        }
+
+        // ================= NHẬP / XUẤT EXCEL =================
+        function parseImportedDate(val) {
+            if (!val) return "";
+            if (val instanceof Date) {
+                const d = new Date(val.getTime() - (val.getTimezoneOffset() * 60000));
+                return d.toISOString().split('T')[0];
+            }
+            if (typeof val === 'string') {
+                const parts = val.split(/[-/]/);
+                if (parts.length >= 3) {
+                    let d = parts[0].padStart(2, '0'); let m = parts[1].padStart(2, '0'); let y = parts[2].substring(0,4);
+                    if (parts[0].length === 4) return `${parts[0]}-${m}-${parts[2].padStart(2, '0').substring(0,2)}`; 
+                    if (y.length === 2) y = "20" + y; return `${y}-${m}-${d}`;
+                }
+            }
+            return "";
+        }
+
+        function handleImportFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array', cellDates: true});
+                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                const importedData = jsonData.map(row => ({
+                    tenCoSo: row["Tên cơ sở"] || row["Tên"] || "",
+                    noiDungViPham: row["Hành vi vi phạm"] || row["Nội dung vi phạm"] || row["Hành vi"] || "",
+                    soBBKT: row["Số BB KT"] || row["Số BBKT"] || "",
+                    ngayBBKT: parseImportedDate(row["Ngày BB KT"] || row["Ngày phát hiện"]),
+                    soBBVP: row["Số BB VP"] || row["Số BBVP"] || "",
+                    ngayBBVP: parseImportedDate(row["Ngày BB VP"] || row["Ngày BBVP"]),
+                    soQDXPHC: row["Số QĐ XPHC"] || row["Số QĐ"] || "",
+                    ngayQDXPHC: parseImportedDate(row["Ngày QĐ XPHC"] || row["Ngày QĐ"]),
+                    tienPhat: parseInt(String(row["Số tiền phạt"] || row["Phạt tiền"] || row["Tiền phạt"] || "0").replace(/\D/g, '')),
+                    daNopPhat: String(row["Đã nộp phạt chưa"] || row["Đã nộp phạt"]).toLowerCase() === 'có' || row["Đã nộp phạt"] === true
+                }));
+                data = [...data, ...importedData]; saveData(); renderTable();
+                event.target.value = ''; 
+                alert(`Đã nhập ${importedData.length} biên bản.`);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function exportToExcel() {
+            if (data.length === 0) return;
+            const exportData = data.map(i => ({ 
+                "STT": i.stt, "Tên cơ sở": i.tenCoSo, "Hành vi vi phạm": i.noiDungViPham, "Số tiền phạt": i.tienPhat,
+                "Số BB KT": i.soBBKT, "Ngày BB KT": formatDate(i.ngayBBKT).replace(/<[^>]*>?/gm, ''),
+                "Số BB VP": i.soBBVP, "Ngày BB VP": formatDate(i.ngayBBVP).replace(/<[^>]*>?/gm, ''),
+                "Tình trạng": getStatusInfo(i).text,
+                "Đã nộp phạt chưa": i.daNopPhat ? 'Có' : 'Không'
+            }));
+            const ws = XLSX.utils.json_to_sheet(exportData); 
+            ws['!cols'] = [{wch:5}, {wch:35}, {wch:60}, {wch:15}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:20}, {wch:15}];
+            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "BBVP");
+            XLSX.writeFile(wb, `DS_Vi_Pham_${new Date().toISOString().slice(0,10)}.xlsx`);
+        }
+
+        function filterTable() { renderTable(); }
+
+        window.onload = () => { khoiTaoTuDien(); initData(); renderTable(); };
+    </script>
+</body>
+</html>
