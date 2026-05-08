@@ -39,12 +39,12 @@
                 <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-xl shadow-sm border border-slate-200">🛡️</div>
                 <div>
                     <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Quản Lý Vi Phạm Hành Chính</h1>
-                    <p class="text-slate-500 font-medium text-sm mt-0.5">Đồng bộ Đám mây & Tự động kiểm tra hạn 7 ngày</p>
+                    <p class="text-slate-500 font-medium text-sm mt-0.5">Database SheetDB & Tự động kiểm tra hạn 7 ngày</p>
                 </div>
             </div>
             <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
                 <button onclick="initData()" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm text-sm" title="Tải lại dữ liệu từ Google Sheets">
-                    🔄 Đồng bộ
+                    🔄 Tải lại dữ liệu
                 </button>
                 <button onclick="document.getElementById('file-import').click()" class="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm text-sm">
                     📥 Nhập Excel
@@ -58,8 +58,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="summary">
-            </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6" id="summary"></div>
 
         <div class="bg-white p-2 rounded-xl shadow-sm border border-slate-200 mb-6 flex flex-col md:flex-row gap-2 items-center">
             <div class="flex-1 relative w-full flex items-center">
@@ -110,6 +109,7 @@
             <div class="p-6 overflow-y-auto bg-white">
                 <form id="entry-form" onsubmit="handleFormSubmit(event)" class="space-y-6">
                     <input type="hidden" id="edit-index">
+                    <input type="hidden" id="edit-id">
 
                     <div>
                         <div class="form-section-title">1. Thông tin chung & Hành vi</div>
@@ -169,7 +169,6 @@
                                 <div><label class="block text-xs text-slate-500 mb-1">Ngày ra QĐ</label><input type="date" id="ngay-qdxphc" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"></div>
                                 <div class="col-span-2"><label class="block text-xs text-slate-500 mb-1">Số tiền phạt chính thức (VNĐ)</label><input type="number" id="tien-phat" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm font-bold text-rose-600"></div>
                             </div>
-                            
                             <div class="border border-slate-200 p-4 rounded-xl flex flex-col justify-center gap-4 bg-slate-50/50">
                                 <label class="flex items-center gap-3 cursor-pointer p-2 bg-white rounded-lg border border-slate-200 hover:border-brand-500 transition-colors">
                                     <input type="checkbox" id="da-nop-phat" class="w-5 h-5 text-brand-600 rounded border-slate-300 cursor-pointer">
@@ -190,53 +189,148 @@
 
     <script>
         // =========================================================
-        // 1. KẾT NỐI DATABASE GOOGLE SHEETS
+        // KẾT NỐI SHEETDB VÀ QUẢN LÝ DỮ LIỆU
         // =========================================================
-        const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwRmJFmE6AGxppqao2i5C639OM3X3oTZHVuEc59mMy5crAwehCVomDl4tb05mV8o615/exec";
+        
+        const SHEETDB_URL = "https://docs.google.com/spreadsheets/d/1TM7yost-oMow9J8YdaqTPmjXy0w9pkbvaJKFb5wzSGk/edit?gid=600841196#gid=600841196"; // Lấy từ SheetDB.io
+        
         let data = [];
 
+        // Trích xuất định dạng chuẩn để gửi lên SheetDB
+        function toSheetDBFormat(item) {
+            return {
+                "ID": item.id,
+                "Tên cơ sở": item.tenCoSo,
+                "Đối tượng": item.doiTuongPhat,
+                "Nội dung vi phạm": item.noiDungViPham,
+                "Số BBKT": item.soBBKT,
+                "Ngày BBKT": item.ngayBBKT,
+                "Số BBVP": item.soBBVP,
+                "Ngày BBVP": item.ngayBBVP,
+                "Số QĐ": item.soQDXPHC,
+                "Ngày QĐ": item.ngayQDXPHC,
+                "Tiền phạt": item.tienPhat,
+                "Đã nộp phạt": item.daNopPhat ? "TRUE" : "FALSE"
+            };
+        }
+
+        // Tải dữ liệu từ SheetDB
         async function initData() { 
-            showToast('🔄 Đang đồng bộ dữ liệu từ Google Sheets...', 'bg-blue-600');
+            showToast('🔄 Đang đồng bộ với SheetDB...', 'bg-blue-600');
             try {
-                const response = await fetch(GOOGLE_SHEET_URL);
-                if(response.ok) {
-                    data = await response.json();
+                const response = await fetch(SHEETDB_URL);
+                if (response.ok) {
+                    const rawData = await response.json();
+                    
+                    data = rawData.map(item => ({
+                        id: item['ID'],
+                        tenCoSo: item['Tên cơ sở'],
+                        doiTuongPhat: item['Đối tượng'],
+                        noiDungViPham: item['Nội dung vi phạm'],
+                        soBBKT: item['Số BBKT'],
+                        ngayBBKT: item['Ngày BBKT'],
+                        soBBVP: item['Số BBVP'],
+                        ngayBBVP: item['Ngày BBVP'],
+                        soQDXPHC: item['Số QĐ'],
+                        ngayQDXPHC: item['Ngày QĐ'],
+                        tienPhat: item['Tiền phạt'],
+                        daNopPhat: item['Đã nộp phạt'] === 'TRUE' || item['Đã nộp phạt'] === 'true'
+                    }));
+                    
+                    // Lưu bản backup xuống máy tính
+                    localStorage.setItem('ql_bbvp_sheetdb', JSON.stringify(data));
                     renderTable();
                     showToast('✅ Tải dữ liệu đám mây thành công!', 'bg-emerald-600');
+                } else {
+                    throw new Error("Lỗi API");
                 }
             } catch (error) {
                 console.error(error);
-                showToast('❌ Lỗi mạng. Đang tải dữ liệu lưu tạm...', 'bg-rose-600');
-                // Nếu rớt mạng, lấy tạm từ LocalStorage
-                const saved = localStorage.getItem('ql_bbvp_backup');
+                showToast('❌ Lỗi mạng! Đang lấy bản lưu cũ trong máy.', 'bg-rose-600');
+                const saved = localStorage.getItem('ql_bbvp_sheetdb');
                 if (saved) { data = JSON.parse(saved); renderTable(); }
             }
         }
 
-        async function saveData() { 
-            // Cập nhật lại số thứ tự
-            data.forEach((item, idx) => item.stt = idx + 1); 
-            // Lưu backup xuống máy đề phòng mất mạng
-            localStorage.setItem('ql_bbvp_backup', JSON.stringify(data)); 
+        // Hàm Thêm và Sửa bằng SheetDB (Tốc độ ánh sáng, gọi trực tiếp API)
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const editIndex = document.getElementById('edit-index').value;
             
-            showToast('☁️ Đang lưu dữ liệu lên đám mây...', 'bg-amber-600');
-            try {
-                const response = await fetch(GOOGLE_SHEET_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify(data)
-                });
-                if(response.ok) {
-                    showToast('✅ Đã lưu an toàn lên Google Sheets!', 'bg-emerald-600');
+            const formData = {
+                tenCoSo: document.getElementById('ten-co-so').value,
+                doiTuongPhat: document.getElementById('doi-tuong-phat').value,
+                noiDungViPham: document.getElementById('noi-dung-vi-pham').value,
+                soBBKT: document.getElementById('so-bbkt').value,
+                ngayBBKT: document.getElementById('ngay-bbkt').value,
+                soBBVP: document.getElementById('so-bbvp').value,
+                ngayBBVP: document.getElementById('ngay-bbvp').value,
+                soQDXPHC: document.getElementById('so-qdxphc').value,
+                ngayQDXPHC: document.getElementById('ngay-qdxphc').value,
+                tienPhat: document.getElementById('tien-phat').value,
+                daNopPhat: document.getElementById('da-nop-phat').checked
+            };
+
+            hideModal(); // Tắt popup ngay lập tức cho mượt
+
+            if (editIndex !== '') {
+                // CHẾ ĐỘ SỬA
+                formData.id = document.getElementById('edit-id').value;
+                data[editIndex] = formData;
+                renderTable(); // Cập nhật màn hình ngay lập tức
+                
+                showToast('🔄 Đang cập nhật lên đám mây...', 'bg-amber-600');
+                try {
+                    await fetch(`${SHEETDB_URL}/ID/${formData.id}`, {
+                        method: 'PUT',
+                        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ data: toSheetDBFormat(formData) })
+                    });
+                    showToast('✅ Đã cập nhật lên Sheets!', 'bg-emerald-600');
+                } catch (err) {
+                    showToast('❌ Lỗi mạng khi cập nhật đám mây!', 'bg-rose-600');
                 }
-            } catch (error) {
-                console.error(error);
-                showToast('❌ Lỗi mạng! Đã lưu tạm trên máy này.', 'bg-rose-600');
+            } else {
+                // CHẾ ĐỘ THÊM MỚI
+                formData.id = "ID_" + Date.now(); // Tạo mã ID duy nhất
+                data.unshift(formData); // Chèn lên đầu bảng
+                renderTable();
+                
+                showToast('🔄 Đang lưu hồ sơ mới...', 'bg-amber-600');
+                try {
+                    await fetch(SHEETDB_URL, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ data: [toSheetDBFormat(formData)] })
+                    });
+                    showToast('✅ Đã lưu an toàn lên Sheets!', 'bg-emerald-600');
+                } catch (err) {
+                    showToast('❌ Lỗi mạng khi thêm mới!', 'bg-rose-600');
+                }
             }
+            localStorage.setItem('ql_bbvp_sheetdb', JSON.stringify(data));
+        }
+
+        // Hàm Xóa bằng SheetDB
+        async function deleteRow(idx) { 
+            if (confirm("Xóa hồ sơ này? LƯU Ý: Dữ liệu cũng sẽ bị xóa khỏi Google Sheets!")) { 
+                const idToDelete = data[idx].id;
+                data.splice(idx, 1); 
+                renderTable(); 
+                localStorage.setItem('ql_bbvp_sheetdb', JSON.stringify(data));
+                
+                showToast('🔄 Đang xóa trên đám mây...', 'bg-amber-600');
+                try {
+                    await fetch(`${SHEETDB_URL}/ID/${idToDelete}`, { method: 'DELETE' });
+                    showToast('🗑️ Đã xóa thành công!', 'bg-slate-800');
+                } catch (err) {
+                    showToast('❌ Lỗi mạng khi xóa!', 'bg-rose-600');
+                }
+            } 
         }
 
         // =========================================================
-        // 2. DATA 83 HÀNH VI ĐẦY ĐỦ 100%
+        // DATA 83 HÀNH VI (TỪ ĐIỂN THÔNG MINH)
         // =========================================================
         const tuDienHanhVi = [
             { hanhVi: "Làm hỏng băng rôn, khẩu hiệu, pa nô, áp phích, tranh ảnh tuyên truyền về phòng cháy, chữa cháy, cứu nạn, cứu hộ", mucPhat: "400.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc khôi phục lại tình trạng ban đầu", canCu: "Khoản 1, điều 6, Nghị định số 106/2025/NĐ-CP" },
@@ -380,7 +474,7 @@
             { hanhVi: "Không báo cháy hoặc không báo tình huống cứu nạn, cứu hộ", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 4, điều 27, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Cản trở lực lượng và phương tiện chữa cháy, cứu nạn, cứu hộ thực hiện chữa cháy, cứu nạn, cứu hộ", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 5, điều 27, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Lợi dụng việc tham gia chữa cháy, cứu nạn, cứu hộ để xâm phạm đến lợi ích của Nhà nước hoặc quyền, lợi ích hợp pháp của cơ quan, tổ chức, cá nhân", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 5, điều 27, Nghị định số 106/2025/NĐ-CP" },
-            { hanhVi: "Không duy trì đường giao thông cho phương tiện chữa cháy, cứu nạn, cứu hộ hoạt động", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì đường giao thông cho phương tiện chữa cháy, cứu nạn, cứu hộ hoạt động", canCu: "Khoản 6, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì đường giao thông cho phương tiện chữa cháy, cứu nạn, cứu hộ hoạt động", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì đường giao thông", canCu: "Khoản 6, điều 27, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Khai báo không đầy đủ thông tin của cơ sở vào hệ thống Cơ sở dữ liệu về phòng cháy, chứa cháy, cứu nạn, cứu hộ và truyền tin báo cháy theo quy định", mucPhat: "750.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 28, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Khai báo không đầy đủ thông tin của phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy vào cơ sở dữ liệu của cơ quan quản lý chuyên ngành khi lưu thông phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy theo quy định", mucPhat: "750.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 28, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Không cập nhật thông tin khi cơ sở có thay đổi so với thông tin đã khai báo trước đó vào hệ thống Cơ sở dữ liệu về phòng cháy, cháy, cứu nạn, cứu hộ và truyền tin báo cháy", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 28, Nghị định số 106/2025/NĐ-CP" },
@@ -423,116 +517,7 @@
             }
         }
 
-        // =========================================================
-        // 3. RENDER UI & CRUD & IMPORT EXCEL
-        // =========================================================
-        function showToast(msg, bgClass) {
-            const toast = document.createElement('div');
-            toast.className = `fixed bottom-6 right-6 text-white px-6 py-3 rounded-xl shadow-xl z-[999] flex items-center gap-2 transform transition-all translate-y-0 opacity-100 text-sm font-medium ${bgClass}`;
-            toast.innerHTML = msg; document.body.appendChild(toast);
-            setTimeout(() => { toast.classList.add('translate-y-4', 'opacity-0'); setTimeout(() => toast.remove(), 300); }, 3000);
-        }
-
-        function renderTable() {
-            const tbody = document.getElementById('table-body'); tbody.innerHTML = '';
-            const search = document.getElementById('search-input').value.toLowerCase();
-            const statusF = document.getElementById('status-filter').value;
-            
-            let filtered = data.filter(item => {
-                const textMatch = !search || item.tenCoSo.toLowerCase().includes(search) || item.noiDungViPham.toLowerCase().includes(search);
-                const statMatch = statusF === 'ALL' || getStatusInfo(item).code === statusF;
-                return textMatch && statMatch;
-            });
-
-            if(filtered.length === 0) { 
-                tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-8 text-center text-slate-500">Chưa có dữ liệu. Hãy thêm mới hoặc đồng bộ đám mây.</td></tr>`; 
-                renderSummary(filtered); return; 
-            }
-
-            filtered.forEach((item) => {
-                const idx = data.indexOf(item);
-                const st = getStatusInfo(item);
-                const statusTag = `<span class="px-2.5 py-1 rounded-full text-[11px] font-semibold border border-transparent ${st.bg} ${st.textCol}">${st.text}</span>`;
-                
-                const checkNopPhat = item.daNopPhat 
-                    ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">✓ Đã nộp</span>' 
-                    : '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-500">Chưa nộp</span>';
-
-                tbody.innerHTML += `
-                    <tr class="hover:bg-slate-50 border-b border-slate-100">
-                        <td class="px-4 py-3 text-center">${item.stt}</td>
-                        <td class="px-4 py-3 font-medium min-w-cell">${item.tenCoSo}</td>
-                        <td class="px-4 py-3 text-slate-600"><div class="truncate-text" title="${item.noiDungViPham}">${item.noiDungViPham}</div></td>
-                        <td class="px-4 py-3 text-rose-600 font-bold text-right">${item.tienPhat ? Number(item.tienPhat).toLocaleString() + ' ₫' : '--'}</td>
-                        
-                        <td class="px-4 py-3 border-l bg-slate-50/50 min-w-[130px]">
-                            <div class="font-medium text-slate-800">${item.soBBKT || '--'}</div><div class="text-xs text-slate-500">${formatDate(item.ngayBBKT)}</div>
-                        </td>
-                        <td class="px-4 py-3 border-l bg-slate-50/50 min-w-[130px]">
-                            <div class="font-bold text-slate-900">${item.soBBVP || '--'}</div><div class="text-xs text-slate-500 mb-1">${formatDate(item.ngayBBVP)}</div>
-                        </td>
-                        
-                        <td class="px-4 py-3 border-l text-center">${statusTag}</td>
-                        <td class="px-4 py-3 border-l text-center">${checkNopPhat}</td>
-                        <td class="px-4 py-3 border-l text-center">
-                            <div class="flex justify-center gap-1">
-                                <button onclick="editRow(${idx})" class="text-blue-600 bg-blue-50 hover:bg-blue-100 p-1.5 rounded-lg" title="Sửa hồ sơ">✏️</button>
-                                <button onclick="deleteRow(${idx})" class="text-rose-600 bg-rose-50 hover:bg-rose-100 p-1.5 rounded-lg" title="Xóa hồ sơ">🗑️</button>
-                            </div>
-                        </td>
-                    </tr>
-                `;
-            });
-            renderSummary(filtered);
-        }
-
-        function deleteRow(idx) { if (confirm("Xóa hồ sơ này?")) { data.splice(idx, 1); saveData(); renderTable(); } }
-        
-        function editRow(idx) {
-            const item = data[idx];
-            document.getElementById('edit-index').value = idx;
-            document.getElementById('ten-co-so').value = item.tenCoSo;
-            document.getElementById('doi-tuong-phat').value = item.doiTuongPhat || 'Tổ chức';
-            document.getElementById('noi-dung-vi-pham').value = item.noiDungViPham;
-            document.getElementById('so-bbkt').value = item.soBBKT || '';
-            document.getElementById('ngay-bbkt').value = item.ngayBBKT || '';
-            document.getElementById('so-bbvp').value = item.soBBVP || '';
-            document.getElementById('ngay-bbvp').value = item.ngayBBVP || '';
-            document.getElementById('so-qdxphc').value = item.soQDXPHC || '';
-            document.getElementById('ngay-qdxphc').value = item.ngayQDXPHC || '';
-            document.getElementById('tien-phat').value = item.tienPhat || '';
-            document.getElementById('da-nop-phat').checked = item.daNopPhat || false;
-            
-            kiemTraGoiY();
-            document.getElementById('modal').classList.add('active'); 
-        }
-
-        function showAddModal() { 
-            document.getElementById('entry-form').reset();
-            document.getElementById('edit-index').value = ''; 
-            document.getElementById('ngay-bbvp').value = new Date().toISOString().split('T')[0];
-            document.getElementById('goi-y-box').classList.add('hidden');
-            document.getElementById('modal').classList.add('active'); 
-        }
-        function hideModal() { document.getElementById('modal').classList.remove('active'); }
-
-        function handleFormSubmit(e) {
-            e.preventDefault();
-            const editIndex = document.getElementById('edit-index').value;
-            const formData = {
-                tenCoSo: document.getElementById('ten-co-so').value,
-                doiTuongPhat: document.getElementById('doi-tuong-phat').value,
-                noiDungViPham: document.getElementById('noi-dung-vi-pham').value,
-                soBBKT: document.getElementById('so-bbkt').value, ngayBBKT: document.getElementById('ngay-bbkt').value,
-                soBBVP: document.getElementById('so-bbvp').value, ngayBBVP: document.getElementById('ngay-bbvp').value,
-                soQDXPHC: document.getElementById('so-qdxphc').value, ngayQDXPHC: document.getElementById('ngay-qdxphc').value,
-                tienPhat: Number(document.getElementById('tien-phat').value),
-                daNopPhat: document.getElementById('da-nop-phat').checked
-            };
-            if (editIndex !== '') { data[editIndex] = formData; } else { data.unshift(formData); }
-            saveData(); hideModal(); renderTable();
-        }
-
+        // ================= IMPORT & XUẤT EXCEL =================
         function parseImportedDate(val) {
             if (!val) return "";
             if (val instanceof Date) {
@@ -550,26 +535,45 @@
             return "";
         }
 
-        function handleImportFile(event) {
+        async function handleImportFile(event) {
             const file = event.target.files[0];
             if (!file) return;
+            showToast('🔄 Đang xử lý file...', 'bg-blue-600');
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array', cellDates: true});
                 const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
                 const importedData = jsonData.map(row => ({
+                    id: "ID_" + Math.random().toString(36).substr(2, 9),
                     tenCoSo: row["Tên cơ sở"] || row["Tên"] || "",
+                    doiTuongPhat: row["Đối tượng"] || "Tổ chức",
                     noiDungViPham: row["Hành vi vi phạm"] || row["Nội dung vi phạm"] || row["Hành vi"] || "",
-                    soBBKT: row["Số BB KT"] || row["Số BBKT"] || "",
-                    ngayBBKT: parseImportedDate(row["Ngày BB KT"] || row["Ngày phát hiện"]),
-                    soBBVP: row["Số BB VP"] || row["Số BBVP"] || "",
-                    ngayBBVP: parseImportedDate(row["Ngày BB VP"] || row["Ngày BBVP"]),
-                    soQDXPHC: row["Số QĐ XPHC"] || row["Số QĐ"] || "",
-                    ngayQDXPHC: parseImportedDate(row["Ngày QĐ XPHC"] || row["Ngày QĐ"]),
-                    tienPhat: parseInt(String(row["Số tiền phạt"] || row["Phạt tiền"] || row["Tiền phạt"] || "0").replace(/\D/g, '')),
-                    daNopPhat: String(row["Đã nộp phạt chưa"] || row["Đã nộp phạt"]).toLowerCase() === 'có' || row["Đã nộp phạt"] === true
+                    soBBKT: row["Số BBKT"] || row["Số BB KT"] || "",
+                    ngayBBKT: parseImportedDate(row["Ngày BBKT"] || row["Ngày BB KT"]),
+                    soBBVP: row["Số BBVP"] || row["Số BB VP"] || "",
+                    ngayBBVP: parseImportedDate(row["Ngày BBVP"] || row["Ngày BB VP"]),
+                    soQDXPHC: row["Số QĐ"] || row["Số QĐ XPHC"] || "",
+                    ngayQDXPHC: parseImportedDate(row["Ngày QĐ"] || row["Ngày QĐ XPHC"]),
+                    tienPhat: parseInt(String(row["Tiền phạt"] || row["Số tiền phạt"] || "0").replace(/\D/g, '')),
+                    daNopPhat: String(row["Đã nộp phạt"] || row["Đã nộp phạt chưa"]).toLowerCase() === 'có' || row["Đã nộp phạt"] === true
                 }));
-                data = [...data, ...importedData]; saveData(); renderTable();
+                
+                data = [...data, ...importedData];
+                localStorage.setItem('ql_bbvp_sheetdb', JSON.stringify(data));
+                renderTable();
+                
+                showToast(`🔄 Đã nạp ${importedData.length} dòng. Đang đẩy lên đám mây...`, 'bg-amber-600');
+                try {
+                    const sheetDBData = importedData.map(item => toSheetDBFormat(item));
+                    await fetch(SHEETDB_URL, {
+                        method: 'POST',
+                        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ data: sheetDBData })
+                    });
+                    showToast('✅ Đã nhập file & đồng bộ thành công!', 'bg-emerald-600');
+                } catch(err) {
+                    showToast('❌ Lỗi tải lên! Dữ liệu đã lưu tạm trên máy.', 'bg-rose-600');
+                }
                 event.target.value = ''; 
             };
             reader.readAsArrayBuffer(file);
@@ -577,20 +581,18 @@
 
         function exportToExcel() {
             if (data.length === 0) { showToast('❌ Bảng trống!', 'bg-rose-600'); return; }
-            const exportData = data.map(i => ({ 
-                "STT": i.stt, "Tên cơ sở": i.tenCoSo, "Hành vi vi phạm": i.noiDungViPham, "Số tiền phạt": i.tienPhat,
-                "Số BB KT": i.soBBKT, "Ngày BB KT": formatDate(i.ngayBBKT).replace(/<[^>]*>?/gm, ''),
-                "Số BB VP": i.soBBVP, "Ngày BB VP": formatDate(i.ngayBBVP).replace(/<[^>]*>?/gm, ''),
+            const exportData = data.map((i, idx) => ({ 
+                "STT": idx + 1, "Tên cơ sở": i.tenCoSo, "Hành vi vi phạm": i.noiDungViPham, "Số tiền phạt": i.tienPhat,
+                "Số BBKT": i.soBBKT, "Ngày BBKT": formatDate(i.ngayBBKT).replace(/<[^>]*>?/gm, ''),
+                "Số BBVP": i.soBBVP, "Ngày BBVP": formatDate(i.ngayBBVP).replace(/<[^>]*>?/gm, ''),
                 "Tình trạng": getStatusInfo(i).text,
-                "Đã nộp phạt chưa": i.daNopPhat ? 'Có' : 'Không'
+                "Đã nộp phạt": i.daNopPhat ? 'Có' : 'Không'
             }));
             const ws = XLSX.utils.json_to_sheet(exportData); 
             ws['!cols'] = [{wch:5}, {wch:35}, {wch:60}, {wch:15}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:20}, {wch:15}];
             const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "BBVP");
             XLSX.writeFile(wb, `DS_Vi_Pham_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
-
-        function filterTable() { renderTable(); }
 
         // Khởi động
         window.onload = () => { khoiTaoTuDien(); initData(); };
