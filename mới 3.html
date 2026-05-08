@@ -39,10 +39,13 @@
                 <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-xl shadow-sm border border-slate-200">🛡️</div>
                 <div>
                     <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Quản Lý Vi Phạm Hành Chính</h1>
-                    <p class="text-slate-500 font-medium text-sm mt-0.5">Hệ thống theo dõi hồ sơ & Tự động kiểm tra hạn</p>
+                    <p class="text-slate-500 font-medium text-sm mt-0.5">Đồng bộ Đám mây & Tự động kiểm tra hạn 7 ngày</p>
                 </div>
             </div>
             <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                <button onclick="initData()" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm text-sm" title="Tải lại dữ liệu từ Google Sheets">
+                    🔄 Đồng bộ
+                </button>
                 <button onclick="document.getElementById('file-import').click()" class="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm text-sm">
                     📥 Nhập Excel
                 </button>
@@ -187,7 +190,53 @@
 
     <script>
         // =========================================================
-        // 1. DATA 83 HÀNH VI ĐẦY ĐỦ 100%
+        // 1. KẾT NỐI DATABASE GOOGLE SHEETS
+        // =========================================================
+        const GOOGLE_SHEET_URL = "https://script.google.com/macros/s/AKfycbwRmJFmE6AGxppqao2i5C639OM3X3oTZHVuEc59mMy5crAwehCVomDl4tb05mV8o615/exec";
+        let data = [];
+
+        async function initData() { 
+            showToast('🔄 Đang đồng bộ dữ liệu từ Google Sheets...', 'bg-blue-600');
+            try {
+                const response = await fetch(GOOGLE_SHEET_URL);
+                if(response.ok) {
+                    data = await response.json();
+                    renderTable();
+                    showToast('✅ Tải dữ liệu đám mây thành công!', 'bg-emerald-600');
+                }
+            } catch (error) {
+                console.error(error);
+                showToast('❌ Lỗi mạng. Đang tải dữ liệu lưu tạm...', 'bg-rose-600');
+                // Nếu rớt mạng, lấy tạm từ LocalStorage
+                const saved = localStorage.getItem('ql_bbvp_backup');
+                if (saved) { data = JSON.parse(saved); renderTable(); }
+            }
+        }
+
+        async function saveData() { 
+            // Cập nhật lại số thứ tự
+            data.forEach((item, idx) => item.stt = idx + 1); 
+            // Lưu backup xuống máy đề phòng mất mạng
+            localStorage.setItem('ql_bbvp_backup', JSON.stringify(data)); 
+            
+            showToast('☁️ Đang lưu dữ liệu lên đám mây...', 'bg-amber-600');
+            try {
+                const response = await fetch(GOOGLE_SHEET_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(data)
+                });
+                if(response.ok) {
+                    showToast('✅ Đã lưu an toàn lên Google Sheets!', 'bg-emerald-600');
+                }
+            } catch (error) {
+                console.error(error);
+                showToast('❌ Lỗi mạng! Đã lưu tạm trên máy này.', 'bg-rose-600');
+            }
+        }
+
+        // =========================================================
+        // 2. DATA 83 HÀNH VI ĐẦY ĐỦ 100%
         // =========================================================
         const tuDienHanhVi = [
             { hanhVi: "Làm hỏng băng rôn, khẩu hiệu, pa nô, áp phích, tranh ảnh tuyên truyền về phòng cháy, chữa cháy, cứu nạn, cứu hộ", mucPhat: "400.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc khôi phục lại tình trạng ban đầu", canCu: "Khoản 1, điều 6, Nghị định số 106/2025/NĐ-CP" },
@@ -221,6 +270,9 @@
             { hanhVi: "Lắp đặt, sử dụng dây dẫn điện, thiết bị điện, thiết bị đóng ngắt, bảo vệ không bảo đảm an toàn phòng cháy", mucPhat: "7.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 12, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Không duy trì thiết bị điện phòng nổ đã được trang bị, lắp đặt", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 12, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Không trang bị, lắp đặt, sử dụng thiết bị điện phòng nổ", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 12, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không có giải pháp ngăn cháy đối với khu vực sạc điện cho xe động cơ điện tập trung trong nhà;", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc thực hiện giải pháp ngăn cháy", canCu: "Điểm a, khoản 4, điều 12, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không có hệ thống điện phục vụ phòng cháy và chữa cháy", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 4, điều 12, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì nguồn điện phục vụ phòng cháy và chữa cháy", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 4, điều 12, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Không kiểm tra, bảo trì định kỳ hệ thống tiếp địa, chống sét", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 13, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Lắp đặt hệ thống tiếp địa, chống sét không bảo đảm theo quy định", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 13, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Không duy trì hệ thống tiếp địa, chống sét đã được lắp đặt", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 13, Nghị định số 106/2025/NĐ-CP" },
@@ -328,7 +380,7 @@
             { hanhVi: "Không báo cháy hoặc không báo tình huống cứu nạn, cứu hộ", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 4, điều 27, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Cản trở lực lượng và phương tiện chữa cháy, cứu nạn, cứu hộ thực hiện chữa cháy, cứu nạn, cứu hộ", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 5, điều 27, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Lợi dụng việc tham gia chữa cháy, cứu nạn, cứu hộ để xâm phạm đến lợi ích của Nhà nước hoặc quyền, lợi ích hợp pháp của cơ quan, tổ chức, cá nhân", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 5, điều 27, Nghị định số 106/2025/NĐ-CP" },
-            { hanhVi: "Không duy trì đường giao thông cho phương tiện chữa cháy, cứu nạn, cứu hộ hoạt động", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì đường giao thông", canCu: "Khoản 6, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì đường giao thông cho phương tiện chữa cháy, cứu nạn, cứu hộ hoạt động", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì đường giao thông cho phương tiện chữa cháy, cứu nạn, cứu hộ hoạt động", canCu: "Khoản 6, điều 27, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Khai báo không đầy đủ thông tin của cơ sở vào hệ thống Cơ sở dữ liệu về phòng cháy, chứa cháy, cứu nạn, cứu hộ và truyền tin báo cháy theo quy định", mucPhat: "750.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 28, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Khai báo không đầy đủ thông tin của phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy vào cơ sở dữ liệu của cơ quan quản lý chuyên ngành khi lưu thông phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy theo quy định", mucPhat: "750.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 28, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Không cập nhật thông tin khi cơ sở có thay đổi so với thông tin đã khai báo trước đó vào hệ thống Cơ sở dữ liệu về phòng cháy, cháy, cứu nạn, cứu hộ và truyền tin báo cháy", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 28, Nghị định số 106/2025/NĐ-CP" },
@@ -372,73 +424,15 @@
         }
 
         // =========================================================
-        // 2. LOGIC LƯU TRỮ & XỬ LÝ DỮ LIỆU
+        // 3. RENDER UI & CRUD & IMPORT EXCEL
         // =========================================================
-        let data = [];
-        function initData() { const saved = localStorage.getItem('ql_bbvp_final'); if (saved) data = JSON.parse(saved); }
-        function saveData() { data.forEach((item, idx) => item.stt = idx + 1); localStorage.setItem('ql_bbvp_final', JSON.stringify(data)); }
-
-        function getBusinessDays(startDateStr, endDateStr) {
-            let count = 0; let curDate = new Date(startDateStr); const end = new Date(endDateStr);
-            curDate.setHours(0,0,0,0); end.setHours(0,0,0,0);
-            while (curDate < end) {
-                curDate.setDate(curDate.getDate() + 1);
-                const day = curDate.getDay(); if (day !== 0 && day !== 6) count++;
-            }
-            return count;
+        function showToast(msg, bgClass) {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-6 right-6 text-white px-6 py-3 rounded-xl shadow-xl z-[999] flex items-center gap-2 transform transition-all translate-y-0 opacity-100 text-sm font-medium ${bgClass}`;
+            toast.innerHTML = msg; document.body.appendChild(toast);
+            setTimeout(() => { toast.classList.add('translate-y-4', 'opacity-0'); setTimeout(() => toast.remove(), 300); }, 3000);
         }
 
-        function getStatusInfo(item) {
-            if (!item.ngayBBVP) return { text: 'Thiếu ngày', bg: 'bg-slate-100', textCol: 'text-slate-500', code: 'THIEU_NGAY' };
-            if (item.ngayQDXPHC) {
-                const days = getBusinessDays(item.ngayBBVP, item.ngayQDXPHC);
-                if (days > 7) return { text: `Đã xử lý (Trễ ${days}đ)`, bg: 'bg-emerald-50', textCol: 'text-emerald-700', code: 'DA_XU_LY' };
-                return { text: `Đã xử lý (${days}đ)`, bg: 'bg-emerald-100', textCol: 'text-emerald-700', code: 'DA_XU_LY' };
-            } else {
-                const passedDays = getBusinessDays(item.ngayBBVP, new Date().toISOString().split('T')[0]);
-                if (passedDays > 7) return { text: `Quá hạn (${passedDays}đ)`, bg: 'bg-rose-100', textCol: 'text-rose-700', code: 'QUA_HAN' };
-                if (passedDays >= 5) return { text: `Sắp quá hạn (${passedDays}/7đ)`, bg: 'bg-amber-100', textCol: 'text-amber-700', code: 'SAP_QUA_HAN' };
-                return { text: `Đang chờ (${passedDays}/7đ)`, bg: 'bg-blue-50', textCol: 'text-blue-700', code: 'DANG_CHO' };
-            }
-        }
-
-        function formatDate(dateStr) { 
-            if (!dateStr) return '<span class="text-slate-300">--</span>'; 
-            const d = new Date(dateStr); return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`; 
-        }
-
-        function renderSummary(displayData) {
-            const summary = document.getElementById('summary');
-            let countWarning = 0, countOverdue = 0;
-            let totalFine = displayData.reduce((sum, item) => sum + Number(item.tienPhat || 0), 0);
-            displayData.forEach(item => {
-                const code = getStatusInfo(item).code;
-                if(code === 'SAP_QUA_HAN') countWarning++;
-                if(code === 'QUA_HAN') countOverdue++;
-            });
-            summary.innerHTML = `
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 flex items-center gap-4">
-                    <div class="w-12 h-12 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center text-xl">📋</div>
-                    <div><p class="text-xs font-medium text-slate-500 uppercase">Tổng hiển thị</p><p class="text-2xl font-bold text-slate-800">${displayData.length}</p></div>
-                </div>
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-amber-200 bg-amber-50/30 flex items-center gap-4">
-                    <div class="w-12 h-12 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-xl">⚠️</div>
-                    <div><p class="text-xs font-medium text-slate-500 uppercase">Sắp đến hạn</p><p class="text-2xl font-bold text-amber-600">${countWarning}</p></div>
-                </div>
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-rose-200 bg-rose-50/30 flex items-center gap-4">
-                    <div class="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center text-xl">❌</div>
-                    <div><p class="text-xs font-medium text-slate-500 uppercase">Đang quá hạn</p><p class="text-2xl font-bold text-rose-600">${countOverdue}</p></div>
-                </div>
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-emerald-200 bg-emerald-50/30 flex items-center gap-4">
-                    <div class="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-xl">💰</div>
-                    <div><p class="text-xs font-medium text-slate-500 uppercase">Tổng tiền phạt</p><p class="text-xl font-bold text-emerald-700">${totalFine.toLocaleString('vi-VN')} ₫</p></div>
-                </div>
-            `;
-        }
-
-        // =========================================================
-        // 3. RENDER BẢNG 9 CỘT
-        // =========================================================
         function renderTable() {
             const tbody = document.getElementById('table-body'); tbody.innerHTML = '';
             const search = document.getElementById('search-input').value.toLowerCase();
@@ -451,14 +445,14 @@
             });
 
             if(filtered.length === 0) { 
-                tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-8 text-center text-slate-500">Chưa có dữ liệu.</td></tr>`; 
+                tbody.innerHTML = `<tr><td colspan="9" class="px-6 py-8 text-center text-slate-500">Chưa có dữ liệu. Hãy thêm mới hoặc đồng bộ đám mây.</td></tr>`; 
                 renderSummary(filtered); return; 
             }
 
             filtered.forEach((item) => {
                 const idx = data.indexOf(item);
                 const st = getStatusInfo(item);
-                const statusTag = `<span class="px-2.5 py-1 rounded-full text-xs font-semibold border border-transparent ${st.bg} ${st.textCol}">${st.text}</span>`;
+                const statusTag = `<span class="px-2.5 py-1 rounded-full text-[11px] font-semibold border border-transparent ${st.bg} ${st.textCol}">${st.text}</span>`;
                 
                 const checkNopPhat = item.daNopPhat 
                     ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700">✓ Đã nộp</span>' 
@@ -471,10 +465,10 @@
                         <td class="px-4 py-3 text-slate-600"><div class="truncate-text" title="${item.noiDungViPham}">${item.noiDungViPham}</div></td>
                         <td class="px-4 py-3 text-rose-600 font-bold text-right">${item.tienPhat ? Number(item.tienPhat).toLocaleString() + ' ₫' : '--'}</td>
                         
-                        <td class="px-4 py-3 border-l bg-slate-50/50 min-w-cell">
+                        <td class="px-4 py-3 border-l bg-slate-50/50 min-w-[130px]">
                             <div class="font-medium text-slate-800">${item.soBBKT || '--'}</div><div class="text-xs text-slate-500">${formatDate(item.ngayBBKT)}</div>
                         </td>
-                        <td class="px-4 py-3 border-l bg-slate-50/50 min-w-cell">
+                        <td class="px-4 py-3 border-l bg-slate-50/50 min-w-[130px]">
                             <div class="font-bold text-slate-900">${item.soBBVP || '--'}</div><div class="text-xs text-slate-500 mb-1">${formatDate(item.ngayBBVP)}</div>
                         </td>
                         
@@ -492,7 +486,6 @@
             renderSummary(filtered);
         }
 
-        // ================= CRUD =================
         function deleteRow(idx) { if (confirm("Xóa hồ sơ này?")) { data.splice(idx, 1); saveData(); renderTable(); } }
         
         function editRow(idx) {
@@ -540,7 +533,6 @@
             saveData(); hideModal(); renderTable();
         }
 
-        // ================= NHẬP / XUẤT EXCEL =================
         function parseImportedDate(val) {
             if (!val) return "";
             if (val instanceof Date) {
@@ -579,13 +571,12 @@
                 }));
                 data = [...data, ...importedData]; saveData(); renderTable();
                 event.target.value = ''; 
-                alert(`Đã nhập ${importedData.length} biên bản.`);
             };
             reader.readAsArrayBuffer(file);
         }
 
         function exportToExcel() {
-            if (data.length === 0) return;
+            if (data.length === 0) { showToast('❌ Bảng trống!', 'bg-rose-600'); return; }
             const exportData = data.map(i => ({ 
                 "STT": i.stt, "Tên cơ sở": i.tenCoSo, "Hành vi vi phạm": i.noiDungViPham, "Số tiền phạt": i.tienPhat,
                 "Số BB KT": i.soBBKT, "Ngày BB KT": formatDate(i.ngayBBKT).replace(/<[^>]*>?/gm, ''),
@@ -601,7 +592,8 @@
 
         function filterTable() { renderTable(); }
 
-        window.onload = () => { khoiTaoTuDien(); initData(); renderTable(); };
+        // Khởi động
+        window.onload = () => { khoiTaoTuDien(); initData(); };
     </script>
 </body>
 </html>
