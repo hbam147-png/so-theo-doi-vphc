@@ -185,9 +185,6 @@
     </div>
 
     <script>
-        // =========================================================
-        // KẾT NỐI SHEETDB VÀ QUẢN LÝ DỮ LIỆU
-        // =========================================================
         const SHEETDB_URL = "https://sheetdb.io/api/v1/u9ggybe606ea9"; 
         let data = [];
 
@@ -233,12 +230,11 @@
                     renderSummary();
                     showToast('✅ Tải dữ liệu thành công!', 'bg-emerald-600');
                 } else {
-                    const errText = await response.text();
-                    showToast(`❌ Lỗi máy chủ: ${errText}`, 'bg-rose-600');
+                    showToast(`❌ Lỗi máy chủ: ${await response.text()}`, 'bg-rose-600');
                 }
             } catch (error) {
                 console.error("Lỗi:", error);
-                showToast('❌ Bị chặn! Hãy TẮT CHẶN QUẢNG CÁO (Adblock/Shields) trên trình duyệt!', 'bg-rose-600');
+                showToast('❌ Bị chặn! Hãy TẮT CHẶN QUẢNG CÁO!', 'bg-rose-600');
                 const saved = localStorage.getItem('ql_bbvp_sheetdb');
                 if (saved) { 
                     data = JSON.parse(saved); 
@@ -281,8 +277,7 @@
                         headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
                         body: JSON.stringify({ data: [toSheetDBFormat(formData)] })
                     });
-                    if(response.ok) showToast('✅ Cập nhật hồ sơ thành công!', 'bg-emerald-600');
-                    else showToast(`❌ Lỗi: ${await response.text()}`, 'bg-rose-600');
+                    if(response.ok) showToast('✅ Cập nhật thành công!', 'bg-emerald-600');
                 } catch (err) {
                     showToast('❌ Bị chặn! Hãy TẮT chặn quảng cáo!', 'bg-rose-600');
                 }
@@ -300,7 +295,6 @@
                         body: JSON.stringify({ data: [toSheetDBFormat(formData)] })
                     });
                     if(response.ok) showToast('✅ Thêm mới thành công!', 'bg-emerald-600');
-                    else showToast(`❌ Lỗi: ${await response.text()}`, 'bg-rose-600');
                 } catch (err) {
                     showToast('❌ Bị chặn! Hãy TẮT chặn quảng cáo!', 'bg-rose-600');
                 }
@@ -320,7 +314,6 @@
                 try {
                     const response = await fetch(`${SHEETDB_URL}/ID/${idToDelete}`, { method: 'DELETE' });
                     if(response.ok) showToast('🗑️ Đã xóa thành công!', 'bg-slate-800');
-                    else showToast(`❌ Lỗi: ${await response.text()}`, 'bg-rose-600');
                 } catch (err) {
                     showToast('❌ Bị chặn! Hãy TẮT chặn quảng cáo!', 'bg-rose-600');
                 }
@@ -328,13 +321,160 @@
         }
 
         // =========================================================
-        // TỪ ĐIỂN 83 HÀNH VI (GIỮ NGUYÊN)
+        // 83 HÀNH VI VI PHẠM (ĐẦY ĐỦ - KHÔNG CẮT NGẮN)
         // =========================================================
-                const tuDienHanhVi = [
+        const tuDienHanhVi = [
             { hanhVi: "Làm hỏng băng rôn, khẩu hiệu, pa nô, áp phích, tranh ảnh tuyên truyền về phòng cháy, chữa cháy, cứu nạn, cứu hộ", mucPhat: "400.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc khôi phục lại tình trạng ban đầu", canCu: "Khoản 1, điều 6, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Không tổ chức tuyên truyền, phổ biến, giáo dục kiến thức, pháp luật về phòng cháy, chữa cháy và cứu nạn, cứu hộ đối với các đối tượng quy định tại Điều 8 Luật Phòng cháy, chữa cháy và cứu nạn, cứu hộ", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 6, Nghị định số 106/2025/NĐ-CP" },
-            // ... (83 items đầy đủ)
-            // Tôi không paste hết 83 dòng ở đây để tin nhắn không quá dài, nhưng bạn copy **toàn bộ mảng** từ file HTML gốc bạn gửi lần đầu (phần đầu tiên của cuộc trò chuyện).
+            { hanhVi: "Không tổ chức bồi dưỡng nghiệp vụ phòng cháy, chữa cháy, cứu nạn, cứu hộ hằng năm cho đối tượng quy định tại các điểm c, d, đ, e và điểm g khoản 1 Điều 45 Luật Phòng cháy, chữa cháy và cứu nạn, cứu hộ đã được huấn luyện nghiệp vụ phòng cháy, chữa cháy, cứu nạn, cứu hộ", mucPhat: "5.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc tổ chức bồi dưỡng nghiệp vụ", canCu: "Khoản 3, điều 6, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sử dụng đối tượng quy định tại các điểm c, d, đ, e và điểm g khoản 1 Điều 45 Luật Phòng cháy, chữa cháy và cứu nạn, cứu hộ thực hiện nhiệm vụ phòng cháy, chữa cháy, cứu nạn, cứu hộ nhưng chưa có văn bản thông báo kết quả huấn luyện nghiệp vụ phòng cháy, chữa cháy, cứu nạn, cứu hộ", mucPhat: "7.000.000", thamQuyen: "Chỉ huy đội (Đội trưởng)", khacPhucHauQua: "Buộc tổ chức huấn luyện nghiệp vụ", canCu: "Điều 4, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Ban hành nội quy phòng cháy, chữa cháy, cứu nạn, cứu hộ không đủ nội dung theo quy định hoặc không phù hợp với đặc điểm, tính chất hoạt động của cơ sở, phương tiện giao thông", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 7, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Niêm yết nội quy, biển báo, biển cấm, biển chỉ dẫn về phòng cháy, chữa cháy, cứu nạn, cứu hộ không đúng vị trí quy định", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 7, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì nội quy, biển báo, biển cấm, biển chỉ dẫn về phòng cháy, chữa cháy, cứu nạn, cứu hộ đã được niêm yết", mucPhat: "5.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 7, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không ban hành hoặc không niêm yết nội quy, biển báo, biển cấm, biển chỉ dẫn về phòng cháy, chữa cháy, cứu nạn, cứu hộ.", mucPhat: "7.000.000", thamQuyen: "Chỉ huy đội (Đội trưởng)", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 7, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Thành lập Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở, Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ chuyên ngành không bảo đảm số người theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Cơ quan, tổ chức hoạt động trong cơ sở không cử người tham gia Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không phân công người thực hiện nhiệm vụ phòng cháy, chữa cháy, cứu nạn, cứu hộ tại cơ sở thuộc diện quản lý về phòng cháy, chữa cháy có dưới 20 người thường xuyên làm việc", mucPhat: "7.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bố trí địa điểm trực chữa cháy, cứu nạn, cứu hộ của Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở, Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ chuyên ngành", mucPhat: "7.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bố trí lực lượng, phương tiện của Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở, Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ chuyên ngành trực chữa cháy, cứu nạn, cứu hộ hằng ngày", mucPhat: "9.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không thành lập Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 4, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không thành lập Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ chuyên ngành", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 5, điều 8, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không đủ tài liệu trong hồ sơ về phòng cháy, chữa cháy, cứu nạn, cứu hộ", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 9, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không lập hồ sơ về phòng cháy, chữa cháy, cứu nạn, cứu hộ", mucPhat: "6.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 9, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không xuất trình hồ sơ về phòng cháy, chữa cháy, cứu nạn, cứu hộ phục vụ kiểm tra, thanh tra về phòng cháy, chữa cháy", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 5, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Gửi báo cáo kết quả thực hiện công tác phòng cháy, chữa cháy, cứu nạn, cứu hộ của cơ sở không đúng thời hạn;", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 10, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không thực hiện yêu cầu về phòng cháy, chữa cháy, cứu nạn, cứu hộ tại văn bản kiến nghị để cơ sở khắc phục những tồn tại, hạn chế", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 1, điều 10, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bố trí người có thẩm quyền làm việc với người có thẩm quyền kiểm tra, thanh tra sau khi đã nhận được thông báo kiểm tra, quyết định thanh tra về phòng cháy, chữa cháy;", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 5, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Không gửi báo cáo kết quả thực hiện công tác phòng cháy, chữa cháy, cứu nạn, cứu hộ của cơ sở", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 10, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không thực hiện tự kiểm tra về phòng cháy, chữa cháy định kỳ", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 10, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không chấp hành việc đình chỉ hoạt động có thời hạn tại quyết định xử phạt vi phạm hành chính trong lĩnh vực phòng cháy, chữa cháy và cứu nạn, cứu hộ của người có thẩm quyền", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 4, điều 10, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không chấp hành quyết định tạm đình chỉ, quyết định đình chỉ hoạt động theo quy định của pháp luật về phòng cháy, chữa cháy và cứu nạn, cứu hộ.", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 4, điều 10, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sử dụng nguồn lửa, nguồn nhiệt, thiết bị, dụng cụ sinh lửa, sinh nhiệt mà không bảo đảm khoảng cách phòng cháy, chữa cháy theo quy định", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 11, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sử dụng nguồn lửa, nguồn nhiệt, thiết bị, dụng cụ sinh lửa, sinh nhiệt ở những khu vực có quy định cấm", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 11, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Hàn, cắt kim loại mà không có biện pháp phòng cháy, chữa cháy theo quy định", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 11, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Lắp đặt, sử dụng dây dẫn điện, thiết bị điện, thiết bị đóng ngắt, bảo vệ không bảo đảm an toàn phòng cháy", mucPhat: "7.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 12, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì thiết bị điện phòng nổ đã được trang bị, lắp đặt", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 12, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt, sử dụng thiết bị điện phòng nổ", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 12, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không có giải pháp ngăn cháy đối với khu vực sạc điện cho xe động cơ điện tập trung trong nhà;", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc thực hiện giải pháp ngăn cháy", canCu: "Điểm a, khoản 4, điều 12, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không có hệ thống điện phục vụ phòng cháy và chữa cháy", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 4, điều 12, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì nguồn điện phục vụ phòng cháy và chữa cháy", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 4, điều 12, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không kiểm tra, bảo trì định kỳ hệ thống tiếp địa, chống sét", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 13, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Lắp đặt hệ thống tiếp địa, chống sét không bảo đảm theo quy định", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 13, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hệ thống tiếp địa, chống sét đã được lắp đặt", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 13, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không lắp đặt hệ thống tiếp địa, chống sét cho nhà, công trình", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 13, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sắp xếp hoặc bố trí chất, hàng hóa nguy hiểm về cháy, nổ không bảo đảm theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 14, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Bảo quản chất, hàng hóa nguy hiểm về cháy, nổ vượt quá số lượng, khối lượng theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc giảm số lượng, khối lượng", canCu: "Điểm b, khoản 1, điều 14, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Bảo quản hoặc sử dụng chất, hàng hóa nguy hiểm về cháy, nổ không đúng nơi quy định", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc di chuyển đúng nơi quy định", canCu: "Khoản 2, điều 14, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Để hình thành môi trường nguy hiểm cháy, nổ có chi số nguy hiểm cháy, nổ vượt quá giới hạn dưới của giới hạn nồng độ bắt cháy", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 14, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Tàng trữ trái phép chất, hàng hóa nguy hiểm về cháy, nổ nhưng chưa đến mức truy cứu trách nhiệm hình sự", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Tịch thu tang vật", canCu: "Khoản 4, điều 14, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sử dụng trái phép chất, hàng hóa nguy hiểm về cháy, nổ nhưng chưa đến mức truy cứu trách nhiệm hình sự", mucPhat: "47.500.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Tịch thu tang vật", canCu: "Khoản 5, điều 14, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì thiết bị phát hiện rò rỉ chất, hàng hóa nguy hiểm về cháy, nổ đã được trang bị, lắp đặt", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì thiết bị, hệ thống chống tĩnh điện đã được trang bị, lắp đặt.", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt thiết bị phát hiện rò rỉ chất, hàng hóa nguy hiểm về cháy, nổ", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt thiết bị, hệ thống chống tĩnh điện", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "San, chiết, nạp chất, hàng hóa nguy hiểm về cháy, nổ không đúng nơi quy định", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 3, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "San, chiết, nạp chất, hàng hóa nguy hiểm về cháy, nổ sang thiết bị chứa không đúng chủng loại hoặc không phù hợp với loại chất, hàng hóa nguy hiểm về cháy, nổ", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Tịch thu tang vật", canCu: "Điểm b, khoản 3, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sản xuất hoặc kinh doanh trái phép chất, hàng hóa nguy hiểm về cháy, nổ nhưng chưa đến mức truy cứu trách nhiệm hình sự", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Tịch thu tang vật; Tước giấy phép", canCu: "Khoản 4, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sắp xếp, bố trí chất, hàng hóa nguy hiểm về cháy, nổ trên phương tiện vận chuyển không bảo đảm an toàn phòng cháy", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì các điều kiện an toàn về phòng cháy của phương tiện giao thông khi vận chuyển chất, hàng hóa nguy hiểm về cháy, nổ", mucPhat: "6.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc duy trì các điều kiện an toàn", canCu: "Điểm a, khoản 2, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Vận chuyển hàng hóa khác cùng với chất, hàng hóa nguy hiểm về cháy, nổ mà không được phép trên cùng một phương tiện giao thông", mucPhat: "6.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Chở người không có nhiệm vụ trên phương tiện giao thông vận chuyền chất, hàng hóa nguy hiểm về cháy, nổ", mucPhat: "6.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 2, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không thực hiện các điều kiện bảo đảm an toàn về phòng cháy, chữa cháy khi bốc, dỡ, bơm, chuyển chất, hàng hóa nguy hiểm về cháy, nổ ra khỏi phương tiện giao thông", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 3, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì các biện pháp an toàn phòng cháy cho thiết bị, đường ống chuyển chất khí, chất lỏng dễ cháy, nổ", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì biện pháp an toàn", canCu: "Điểm b, khoản 3, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Bốc, dỡ, bơm, chuyển chất, hàng hóa nguy hiểm về cháy, nổ tại địa điểm không bảo đảm an toàn phòng cháy.", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc bốc dỡ tại địa điểm an toàn", canCu: "Điểm c, khoản 3, điều 16, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Mua bảo hiểm cháy, nổ bắt buộc không đủ đối tượng bảo hiểm cháy, nổ bắt buộc hoặc không đúng mức phí bảo hiểm cháy, nổ bắt buộc theo quy định đối với cơ sở phải mua bảo hiểm cháy, nổ bắt buộc", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc mua bảo hiểm", canCu: "Khoản 1, điều 6, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Nộp từ 50% đến dưới 100% tổng số tiền được trích cho hoạt động phòng cháy, chữa cháy, cứu nạn, cứu hộ từ bảo hiểm cháy, nổ bắt buộc theo quy định", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 17, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Nộp dưới 50% tổng số tiền được trích cho hoạt động phòng cháy, chữa cháy, cứu nạn, cứu hộ từ bảo hiểm cháy, nổ bắt buộc theo quy định", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 17, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không mua bảo hiểm cháy, nổ bắt buộc đối với cơ sở có nguy hiểm về cháy, nổ thuộc nhóm 2 theo quy định của pháp luật về phòng cháy, chữa cháy và cứu nạn, cứu hộ", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 17, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không mua bảo hiểm cháy, nổ bắt buộc đối với cơ sở có nguy hiểm về cháy, nổ thuộc nhóm 1 theo quy định của pháp luật về phòng cháy, chữa cháy và cứu nạn, cứu hộ", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 4, điều 17, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không nộp tiền được trích cho hoạt động phòng cháy, chữa cháy, cứu nạn, cứu hộ từ bảo hiểm cháy, nổ bắt buộc theo quy định", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 4, điều 17, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Chuyển đổi, bổ sung công năng hoặc cải tạo công trình, hạng mục công trình trong quá trình sử dụng thuộc điện phải thẩm định thiết kế về phòng cháy và chữa cháy khi chưa có văn bản thẩm định thiết kế về phòng cháy và chữa cháy của cơ quan quản lý chuyên ngành", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 18, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Hoán cải phương tiện giao thông trong quá trình sử dụng thuộc diện phải thẩm định thiết kế về phòng cháy và chữa cháy khỉ chưa có văn bản thẩm định thiết kế về phòng cháy và chữa cháy của cơ quan quản lý chuyên ngành", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 18, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Thi công xây dựng công trình, hạng mục công trình hoặc sản xuất, lắp ráp, đóng mới phương tiện giao thông thuộc diện phải thẩm định thiết kế về phòng cháy và chữa cháy khi chưa có văn bản thẩm định thiết kế về phòng cháy và chữa cháy của cơ quan quản lý chuyên ngành", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 18, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Đưa công trình, hạng mục công trình, phương tiện giao thông đã được thẩm duyệt thiết kế hoặc thẩm định thiết kế về phòng cháy và chữa cháy vào khai thác, sử dụng khi chưa có văn bản chấp thuận kết quả nghiệm thu về phòng cháy và chữa cháy của cơ quan quản lý chuyên ngành", mucPhat: "40.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 18, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Đưa công trình, hạng mục công trình, phương tiện giao thông thuộc diện phải thẩm định thiết kế về phòng cháy và chữa cháy vào sử dụng, hoạt động khỉ chưa có - 14 văn bản thẩm định thiết kế về phòng cháy và chữa cháy và văn bản chấp thuận kết quả nghiệm thu về phòng cháy và chữa cháy của cơ quan quản lý chuyên ngành", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 4, điều 18, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Tẩy xóa, sửa chữa làm sai lệch nội dung giấy phép lưu thông phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc nộp lại giấy phép", canCu: "Khoản 1, điều 19, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Kinh doanh, đưa phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy vào lưu thông khi chưa được cấp phép", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc thu hồi phương tiện", canCu: "Điểm a, khoản 2, điều 19, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Sử dụng hồ sơ, tài liệu sai sự thật để đề nghị cấp giấy phép lưu thông phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc nộp lại giấy phép", canCu: "Điểm b, khoản 2, điều 19, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị phương tiện chữa cháy thông dụng, dụng cụ phá dỡ thô sơ không bảo đảm theo quy định", mucPhat: "1.500.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc trang bị phương tiện", canCu: "Khoản 1, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt phương tiện chữa cháy thông dụng, dụng cụ phá đỡ thô sơ", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc trang bị phương tiện", canCu: "Khoản 2, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị, lắp đặt đèn, phương tiện chiếu sáng sự cố, chỉ dẫn thoát nạn không bảo đảm theo quy định.", mucPhat: "6.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc trang bị đèn chiếu sáng sự cố", canCu: "Khoản 3, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ cho Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở, Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ chuyên ngành không bảo đảm theo quy định", mucPhat: "9.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc trang bị phương tiện", canCu: "Khoản 4, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt đèn, phương tiện chiếu sáng sự cố, chỉ dẫn thoát nạn", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc trang bị đèn chiếu sáng sự cố", canCu: "Khoản 5, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ cho Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ cơ sở", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc trang bị phương tiện", canCu: "Khoản 6, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ cho Đội phòng cháy, chữa cháy và cứu nạn, cứu hộ chuyên ngành", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc trang bị phương tiện", canCu: "Khoản 7, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị, lắp đặt thiết bị thuộc hệ thống báo cháy không bảo đảm theo quy định;", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc trang bị thiết bị báo cháy", canCu: "Điểm a, khoản 8, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị, lắp đặt thiết bị thuộc hệ thống chữa cháy không bảo đảm theo quy định.", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc trang bị thiết bị chữa cháy", canCu: "Điểm b, khoản 8, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị phương tiện chữa cháy, cứu nạn, cứu hộ cơ giới không bảo đảm số lượng hoặc không bảo đảm yêu cầu kĩ thuật theo quy định", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc trang bị xe chữa cháy/cơ giới", canCu: "Khoản 1, điều 8, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt hệ thống báo cháy", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc trang bị hệ thống báo cháy", canCu: "Điểm a, khoản 9, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt hệ thống chữa cháy", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc trang bị hệ thống chữa cháy", canCu: "Điểm b, khoản 9, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị phương tiện chữa cháy, cứu nạn, cứu hộ cơ giới.", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc trang bị xe chữa cháy/cơ giới", canCu: "Điểm c, khoản 9, điều 20, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Tự ý di chuyển, che khuất phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ đã được trang bị, lắp đặt.", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc khôi phục lại tình trạng ban đầu", canCu: "Khoản 1, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì đủ số lượng hoặc không bảo đảm yêu cầu kĩ thuật theo quy định của phương tiện chữa cháy thông dụng, dụng cụ phá dỡ thô sơ đã được trang bị, lắp đặt;", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc duy trì đủ số lượng", canCu: "Khoản 1, điều 9, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Không duy trì trữ lượng nước chữa cháy theo quy định.", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc duy trì đủ lượng nước", canCu: "Khoản 1, điều 9, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Không duy trì hoạt động của đèn, phương tiện chiếu sáng sự cố, chỉ dẫn thoát nạn đã được trang bị, lắp đặt", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc duy trì đèn chiếu sáng sự cố", canCu: "Điểm a, khoản 3, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hoạt động của thiết bị báo cháy độc lập đã được trang bị, lắp đặt", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc duy trì thiết bị báo cháy", canCu: "Điểm b, khoản 3, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hoạt động của thiết bị thuộc hệ thống báo cháy đã được trang bị, lắp đặt", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc duy trì thiết bị", canCu: "Điểm a, khoản 4, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hoạt động của thiết bị thuộc hệ thống chữa cháy đã được trang bị, lắp đặt", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc duy trì thiết bị", canCu: "Điểm b, khoản 4, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không đưa phương tiện chữa cháy, cứu nạn, cứu hộ cơ giới vào trực chữa cháy, cứu nạn, cứu hộ", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 5, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hoạt động của hệ thống báo cháy đã được trang bị, lắp đặt", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc duy trì hệ thống báo cháy", canCu: "Điểm a, khoản 6, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hoạt động của hệ thống chữa cháy đã được trang bị, lắp đặt", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc duy trì hệ thống chữa cháy", canCu: "Điểm b, khoản 6, điều 21, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bảo quản, bảo dưỡng phương tiện chữa cháy thông dụng hoặc thiết bị báo cháy độc lập", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Bảo quản, bảo dưỡng hệ thống báo cháy không bảo đảm nội dung theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Bảo quản, bảo dưỡng hệ thống chữa cháy không bảo đảm nội dung theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 1, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Bảo quản, bảo dưỡng phương tiện chữa cháy, cứu nạn, cứu hộ cơ giới không bảo đảm nội dung theo quy định.", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm d, khoản 1, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bảo quản, bảo dưỡng phương tiện chữa cháy, cứu nạn, cứu hộ cơ giới", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 2, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bảo dưỡng hệ thống báo cháy", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 3, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bảo dưỡng hệ thống chữa cháy.", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 3, điều 22, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị, lắp đặt thiết bị thuộc hệ thống thông gió thoát khói không bảo đảm theo quy định", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc trang bị hệ thống thoát khói", canCu: "Điểm a, khoản 1, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Trang bị, lắp đặt thiết bị thuộc hệ thống tạo áp suất dư cho khu vực cần chống nhiễm khói không bảo đảm theo quy định", mucPhat: "15.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc trang bị hệ thống tạo áp suất", canCu: "Điểm b, khoản 1, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì thông gió tự nhiên hoặc không duy trì hệ thống thông gió thoát khói đã được trang bị, lắp đặt", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì hệ thống thoát khói", canCu: "Điểm a, khoản 2, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì hệ thống tạo áp suất dư cho khu vực cần chống nhiễm khói đã được trang bị, lắp đặt", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì hệ thống", canCu: "Điểm b, khoản 2, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì giải pháp thông gió cho khu vực sản xuất, bảo quản, kinh doanh, sử dụng chất, hàng hóa nguy hiểm về cháy, nổ đã được trang bị, lắp đặt", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì giải pháp thông gió", canCu: "Khoản 3, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không có giải pháp thông gió tự nhiên hoặc không có giải pháp thông gió thoát khói", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 4, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt hệ thống tạo áp suất dư cho khu vực phải trang bị, lắp đặt", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 4, điều 23, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Lắp gương trên đường thoát nạn", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc tháo gương", canCu: "Điểm a, khoản 1, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Cửa đi trên lối ra thoát nạn không mở theo chiều thoát nạn", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc mở cửa đúng chiều", canCu: "Điểm b, khoản 1, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Để vật tư, hàng hóa, phương tiện giao thông, vật dụng, thiết bị khác cản trở lối thoát nạn hoặc đường thoát nạn", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc di chuyển vật tư cản trở", canCu: "Khoản 2, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì lối thoát nạn hoặc đường thoát nạn của gian phòng, khu vực", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì lối thoát nạn", canCu: "Điểm a, khoản 4, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không có đủ lối thoát nạn hoặc đường thoát nạn của gian phòng, khu vực", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc bảo đảm đủ lối thoát nạn", canCu: "Điểm b, khoản 4, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì lối thoát nạn hoặc đường thoát nạn của nhà, công trình", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc duy trì lối thoát nạn", canCu: "Điểm a, khoản 5, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không có đủ lối thoát nạn hoặc đường thoát nạn của nhà, công trình", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Buộc bảo đảm đủ lối thoát nạn", canCu: "Điểm b, khoản 5, điều 24, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Để vật tư, hàng hóa, phương tiện giao thông, vật dụng, thiết bị khác không bảo đảm khoảng cách phòng cháy, chữa cháy.", mucPhat: "3.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc di chuyển bảo đảm khoảng cách", canCu: "Khoản 1, điều 25, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì vật liệu ngăn cháy hoặc cửa ngăn cháy hoặc vách ngăn cháy hoặc màn ngăn cháy hoặc rèm ngăn cháy hoặc vật liệu chống cháy đã được trang bị, lắp đặt", mucPhat: "6.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Buộc duy trì vật liệu ngăn cháy", canCu: "Khoản 1, điều 12, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Không dọn sạch chất dễ cháy nằm trong hành lang an toàn tuyến ống dẫn dầu mỏ, khí đốt và sản phẩm dầu mỏ", mucPhat: "9.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 3, điều 25, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Lắp đặt ống dẫn khí cháy, chất lỏng cháy tại khu vực không được phép hoặc không bảo đảm an toàn phòng cháy.", mucPhat: "9.000.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 3, điều 25, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì khoảng cách phòng cháy, chữa cháy giữa nhà, công trình", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì khoảng cách PCCC", canCu: "Khoản 2, điều 12, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt vật liệu ngăn cháy hoặc cửa ngăn cháy hoặc vách ngăn cháy hoặc màn ngăn cháy hoặc rèm ngăn cháy hoặc vật liệu chống cháy", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì vật liệu ngăn cháy", canCu: "Khoản 3, điều 12, NĐ 69/2026/NĐ-CP" },
+            { hanhVi: "Xây dựng nhà, công trình không bảo đảm khoảng cách phòng cháy, chữa cháy", mucPhat: "45.000.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 6, điều 25, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Xây dựng phương án chữa cháy, cứu nạn, cứu hộ của cơ sở, phương tiện giao thông không bảo đảm nội dung theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không cập nhật, bổ sung hoặc không chinh lý phương án chữa cháy, cứu nạn, cứu hộ của cơ sở, phương tiện giao thông", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không phê duyệt hoặc phê duyệt phương án chữa cháy, cứu nạn, cứu hộ của cơ sở, phương tiện giao thông không đúng thẩm quyền", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 1, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không thực tập hết các tình huống trong phương án chữa cháy, cứu nạn, cứu hộ của cơ sở, phương tiện giao thông", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không bố trí đủ lực lượng hoặc phương tiện thuộc phạm vi quản lý tham gia thực tập phương án chữa cháy, cứu nạn, cứu hộ của cơ quan Công an khi được người có thẩm quyền huy động.", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không phối hợp xây dựng phương án chữa cháy, cứu nạn, cứu hộ của cơ quan Công an theo yêu cầu của cơ quan Công an có thẩm quyền", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 3, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không phối hợp tham gia thực tập phương án chữa cháy, cứu nạn, cứu hộ của cơ quan Công an theo yêu cầu của cơ quan Công an có thẩm quyền", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 3, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không tổ chức thực tập phương án chữa cháy, cứu nạn, cứu hộ của cơ sở, phương tiện giao thông", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 4, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không xây dựng phương án chữa cháy, cứu nạn, cứu hộ của cơ sở, phương tiện giao thông.", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Khoản 5, điều 26, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Tự ý vào khu vực chữa cháy, cứu nạn, cứu hộ khi không được phép của người có thẩm quyền", mucPhat: "750.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 1, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không chấp hành mệnh lệnh hoặc quyết định huy động tham gia chữa cháy, cứu nạn, cứu hộ của người có thẩm quyền", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không tổ chức thực hiện khắc phục hậu quả vụ cháy trong điều kiện, khả năng cho phép", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Ngăn cản hoặc cản trở việc thông tin báo cháy, báo tình huống cứu nạn, cứu hộ.", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Lấn chiếm hoặc bố trí vật cản gây cản trở hoạt động của phương tiện chữa cháy, cứu nạn, cứu hộ cơ giới", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 4, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Cố ý báo cháy giả hoặc cố ý báo tình huống cứu nạn, cứu hộ giả", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 4, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không báo cháy hoặc không báo tình huống cứu nạn, cứu hộ", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm c, khoản 4, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Cản trở lực lượng và phương tiện chữa cháy, cứu nạn, cứu hộ thực hiện chữa cháy, cứu nạn, cứu hộ", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 5, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Lợi dụng việc tham gia chữa cháy, cứu nạn, cứu hộ để xâm phạm đến lợi ích của Nhà nước hoặc quyền, lợi ích hợp pháp của cơ quan, tổ chức, cá nhân", mucPhat: "17.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 5, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì đường giao thông cho phương tiện chữa cháy, cứu nạn, cứu hộ hoạt động", mucPhat: "35.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Buộc duy trì đường giao thông", canCu: "Khoản 6, điều 27, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Khai báo không đầy đủ thông tin của cơ sở vào hệ thống Cơ sở dữ liệu về phòng cháy, chứa cháy, cứu nạn, cứu hộ và truyền tin báo cháy theo quy định", mucPhat: "750.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Khai báo không đầy đủ thông tin của phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy vào cơ sở dữ liệu của cơ quan quản lý chuyên ngành khi lưu thông phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy theo quy định", mucPhat: "750.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không cập nhật thông tin khi cơ sở có thay đổi so với thông tin đã khai báo trước đó vào hệ thống Cơ sở dữ liệu về phòng cháy, chữa cháy, cứu nạn, cứu hộ và truyền tin báo cháy", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không chi trả chi phí duy trì hoạt động của thiết bị truyền tin báo cháy để kết nối với hệ thống Cơ sở dữ liệu về phòng cháy, chữa cháy, cứu nạn, cứu hộ và truyền tin báo cháy", mucPhat: "2.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không khai báo thông tin của phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy vào cơ sở dữ liệu của cơ quan quản lý chuyên ngành khi lưu thông phương tiện phòng cháy, chữa cháy, cứu nạn, cứu hộ, vật liệu, cấu kiện ngăn cháy, chống cháy theo quy định", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không khai báo thông tin của cơ sở vào hệ thống Cơ sở dữ liệu về phòng cháy, chữa cháy, cứu nạn, cứu hộ và truyền tin báo cháy", mucPhat: "7.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 4, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Cố ý ngắt kết nối hoặc không khắc phục các hư hỏng dẫn đến làm mất khả năng kết nối của thiết bị truyền tin báo cháy với hệ thống Cơ sở dữ liệu về phòng cháy, chữa cháy, cứu nạn, cứu hộ và truyền tin báo cháy", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 5, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không trang bị, lắp đặt thiết bị truyền tin báo cháy", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 6, điều 28, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không kết nối thiết bị truyền tin báo cháy với hệ thống Cơ sở dữ liệu về phòng cháy, chữa cháy, cứu nạn, cứu hộ và truyền tin báo cháy theo quy định", mucPhat: "25.000.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 6, điều 28, Nghị định số 106/2025/NĐ-CP" }
         ];
 
         function khoiTaoTuDien() {
@@ -369,14 +509,19 @@
         }
 
         // =========================================================
-        // PHẦN JS MỚI HOÀN CHỈNH (đã merge)
+        // CÁC HÀM JS BỔ SUNG
         // =========================================================
         function showToast(message, bgClass = 'bg-slate-800') {
             const toast = document.createElement('div');
             toast.style.cssText = `position:fixed;bottom:20px;right:20px;${bgClass};color:white;padding:14px 20px;border-radius:9999px;box-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);display:flex;align-items:center;gap:10px;z-index:99999;animation:slideIn 0.3s ease-out;`;
             toast.innerHTML = `<span class="text-sm font-medium">${message}</span>`;
             document.body.appendChild(toast);
-            setTimeout(() => { toast.style.transition='all 0.3s'; toast.style.transform='translateY(20px)'; toast.style.opacity='0'; setTimeout(() => toast.remove(), 300); }, 3200);
+            setTimeout(() => {
+                toast.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 1, 1)';
+                toast.style.transform = 'translateY(20px)';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3200);
         }
 
         function hideModal() {
@@ -496,8 +641,6 @@
             });
         }
 
-        function editRow(index) { showAddModal(index); }
-
         function filterTable() { renderTable(); }
 
         function exportToExcel() {
@@ -561,9 +704,6 @@
             reader.readAsBinaryString(file);
         }
 
-        // =========================================================
-        // KHỞI ĐỘNG
-        // =========================================================
         window.onload = () => {
             khoiTaoTuDien();
             initData();
