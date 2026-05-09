@@ -40,7 +40,7 @@
                 </div>
             </div>
             <div class="flex flex-wrap items-center gap-2 w-full md:w-auto">
-                <button onclick="initData()" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm text-sm" title="Tải lại dữ liệu từ Google Sheets">
+                <button onclick="initData()" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm text-sm">
                     🔄 Tải lại dữ liệu
                 </button>
                 <button onclick="document.getElementById('file-import').click()" class="flex items-center gap-2 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-4 py-2 rounded-lg font-medium transition-colors shadow-sm text-sm">
@@ -85,6 +85,10 @@
                             <th class="px-4 py-3 font-semibold border-b border-slate-200 text-right">Số tiền phạt</th>
                             <th class="px-4 py-3 font-semibold border-b border-slate-200 border-l bg-slate-50">BB KT (Số; Ngày)</th>
                             <th class="px-4 py-3 font-semibold border-b border-slate-200 border-l bg-slate-50">BB VP (Số; Ngày)</th>
+                            <th onclick="toggleSortQD()" id="header-qd" 
+                                class="px-4 py-3 font-semibold border-b border-slate-200 border-l bg-slate-50 cursor-pointer hover:bg-slate-100 transition-colors text-center">
+                                QĐ XPHC (Số; Ngày) <span id="sort-icon-qd" class="ml-1">↕</span>
+                            </th>
                             <th class="px-4 py-3 font-semibold border-b border-slate-200 border-l text-center">Tình trạng</th>
                             <th class="px-4 py-3 font-semibold border-b border-slate-200 border-l text-center">Đã nộp phạt</th>
                             <th class="px-4 py-3 font-semibold border-b border-slate-200 border-l text-center">Thao tác</th>
@@ -187,6 +191,7 @@
     <script>
         const SHEETDB_URL = "https://sheetdb.io/api/v1/u9ggybe606ea9"; 
         let data = [];
+        let currentSort = { field: 'ngayQDXPHC', direction: 'desc' };
 
         function toSheetDBFormat(item) {
             return {
@@ -267,61 +272,45 @@
             if (editIndex !== '') {
                 formData.id = document.getElementById('edit-id').value;
                 data[editIndex] = formData;
-                renderTable();
-                renderSummary();
-                
-                showToast('🔄 Đang cập nhật lên đám mây...', 'bg-amber-600');
-                try {
-                    const response = await fetch(`${SHEETDB_URL}/ID/${formData.id}`, {
-                        method: 'PUT',
-                        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ data: [toSheetDBFormat(formData)] })
-                    });
-                    if(response.ok) showToast('✅ Cập nhật thành công!', 'bg-emerald-600');
-                } catch (err) {
-                    showToast('❌ Bị chặn! Hãy TẮT chặn quảng cáo!', 'bg-rose-600');
-                }
             } else {
                 formData.id = "ID_" + Date.now(); 
                 data.unshift(formData); 
-                renderTable();
-                renderSummary();
-                
-                showToast('🔄 Đang đẩy hồ sơ mới lên mây...', 'bg-amber-600');
-                try {
-                    const response = await fetch(SHEETDB_URL, {
-                        method: 'POST',
-                        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ data: [toSheetDBFormat(formData)] })
-                    });
-                    if(response.ok) showToast('✅ Thêm mới thành công!', 'bg-emerald-600');
-                } catch (err) {
-                    showToast('❌ Bị chặn! Hãy TẮT chặn quảng cáo!', 'bg-rose-600');
-                }
             }
+            renderTable();
+            renderSummary();
             localStorage.setItem('ql_bbvp_sheetdb', JSON.stringify(data));
+
+            if (editIndex !== '') {
+                showToast('🔄 Đang cập nhật...', 'bg-amber-600');
+                try {
+                    await fetch(`${SHEETDB_URL}/ID/${formData.id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: [toSheetDBFormat(formData)] }) });
+                    showToast('✅ Cập nhật thành công!', 'bg-emerald-600');
+                } catch (err) { showToast('❌ Lỗi cập nhật!', 'bg-rose-600'); }
+            } else {
+                showToast('🔄 Đang thêm mới...', 'bg-amber-600');
+                try {
+                    await fetch(SHEETDB_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ data: [toSheetDBFormat(formData)] }) });
+                    showToast('✅ Thêm mới thành công!', 'bg-emerald-600');
+                } catch (err) { showToast('❌ Lỗi thêm mới!', 'bg-rose-600'); }
+            }
         }
 
         async function deleteRow(idx) { 
-            if (confirm("Xóa hồ sơ này? Dữ liệu sẽ bị xóa vĩnh viễn khỏi Google Sheets!")) { 
+            if (confirm("Xóa hồ sơ này?")) { 
                 const idToDelete = data[idx].id;
                 data.splice(idx, 1); 
                 renderTable();
                 renderSummary();
                 localStorage.setItem('ql_bbvp_sheetdb', JSON.stringify(data));
-                
-                showToast('🔄 Đang xóa trên đám mây...', 'bg-amber-600');
                 try {
-                    const response = await fetch(`${SHEETDB_URL}/ID/${idToDelete}`, { method: 'DELETE' });
-                    if(response.ok) showToast('🗑️ Đã xóa thành công!', 'bg-slate-800');
-                } catch (err) {
-                    showToast('❌ Bị chặn! Hãy TẮT chặn quảng cáo!', 'bg-rose-600');
-                }
+                    await fetch(`${SHEETDB_URL}/ID/${idToDelete}`, { method: 'DELETE' });
+                    showToast('🗑️ Đã xóa!', 'bg-slate-800');
+                } catch (err) {}
             } 
         }
 
         // =========================================================
-        // 83 HÀNH VI VI PHẠM (ĐẦY ĐỦ - KHÔNG CẮT NGẮN)
+        // 83 HÀNH VI VI PHẠM (ĐẦY ĐỦ)
         // =========================================================
         const tuDienHanhVi = [
             { hanhVi: "Làm hỏng băng rôn, khẩu hiệu, pa nô, áp phích, tranh ảnh tuyên truyền về phòng cháy, chữa cháy, cứu nạn, cứu hộ", mucPhat: "400.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Buộc khôi phục lại tình trạng ban đầu", canCu: "Khoản 1, điều 6, Nghị định số 106/2025/NĐ-CP" },
@@ -479,6 +468,7 @@
 
         function khoiTaoTuDien() {
             const datalist = document.getElementById('danh-sach-tu-dien');
+            datalist.innerHTML = '';
             tuDienHanhVi.forEach(item => {
                 const option = document.createElement('option');
                 option.value = item.hanhVi;
@@ -490,7 +480,6 @@
             const inputVal = document.getElementById('noi-dung-vi-pham').value;
             const box = document.getElementById('goi-y-box');
             const match = tuDienHanhVi.find(item => item.hanhVi === inputVal);
-            
             if (match) {
                 let tienHienThi = match.mucPhat ? Number(match.mucPhat.replace(/\D/g, '')).toLocaleString() + ' ₫' : '--';
                 document.getElementById('gy-muc-phat').innerText = tienHienThi;
@@ -498,30 +487,19 @@
                 document.getElementById('gy-kphq').innerText = match.khacPhucHauQua || "Không";
                 document.getElementById('gy-can-cu').innerText = match.canCu || "--";
                 box.classList.remove('hidden');
-                
                 const tienPhatInput = document.getElementById('tien-phat');
-                if(!tienPhatInput.value && match.mucPhat) {
-                    tienPhatInput.value = match.mucPhat.replace(/\D/g, ''); 
-                }
+                if(!tienPhatInput.value && match.mucPhat) tienPhatInput.value = match.mucPhat.replace(/\D/g, '');
             } else {
                 box.classList.add('hidden');
             }
         }
 
-        // =========================================================
-        // CÁC HÀM JS BỔ SUNG
-        // =========================================================
         function showToast(message, bgClass = 'bg-slate-800') {
             const toast = document.createElement('div');
-            toast.style.cssText = `position:fixed;bottom:20px;right:20px;${bgClass};color:white;padding:14px 20px;border-radius:9999px;box-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);display:flex;align-items:center;gap:10px;z-index:99999;animation:slideIn 0.3s ease-out;`;
+            toast.style.cssText = `position:fixed;bottom:20px;right:20px;${bgClass};color:white;padding:14px 20px;border-radius:9999px;box-shadow:0 25px 50px -12px rgb(0 0 0 / 0.25);display:flex;align-items:center;gap:10px;z-index:99999;`;
             toast.innerHTML = `<span class="text-sm font-medium">${message}</span>`;
             document.body.appendChild(toast);
-            setTimeout(() => {
-                toast.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 1, 1)';
-                toast.style.transform = 'translateY(20px)';
-                toast.style.opacity = '0';
-                setTimeout(() => toast.remove(), 300);
-            }, 3200);
+            setTimeout(() => { toast.style.transition='all 0.3s'; toast.style.transform='translateY(20px)'; toast.style.opacity='0'; setTimeout(() => toast.remove(), 300); }, 3200);
         }
 
         function hideModal() {
@@ -590,11 +568,26 @@
             `;
         }
 
+        function toggleSortQD() {
+            if (currentSort.field === 'ngayQDXPHC') {
+                currentSort.direction = currentSort.direction === 'desc' ? 'asc' : 'desc';
+            } else {
+                currentSort = { field: 'ngayQDXPHC', direction: 'desc' };
+            }
+            updateSortIcon();
+            renderTable();
+        }
+
+        function updateSortIcon() {
+            const icon = document.getElementById('sort-icon-qd');
+            if (icon) icon.textContent = currentSort.direction === 'desc' ? '↓' : '↑';
+        }
+
         function renderTable() {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
 
-            let filteredData = data;
+            let filteredData = [...data];
 
             const searchValue = document.getElementById('search-input').value.toLowerCase().trim();
             if (searchValue) {
@@ -609,8 +602,15 @@
                 filteredData = filteredData.filter(item => calculateStatus(item).code === statusFilter);
             }
 
+            // Sắp xếp theo ngày QĐ
+            filteredData.sort((a, b) => {
+                const dateA = a.ngayQDXPHC ? new Date(a.ngayQDXPHC) : new Date(0);
+                const dateB = b.ngayQDXPHC ? new Date(b.ngayQDXPHC) : new Date(0);
+                return currentSort.direction === 'desc' ? dateB - dateA : dateA - dateB;
+            });
+
             if (filteredData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="text-center py-12 text-slate-400">Không tìm thấy hồ sơ phù hợp</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="text-center py-12 text-slate-400">Không tìm thấy hồ sơ phù hợp</td></tr>`;
                 return;
             }
 
@@ -628,6 +628,7 @@
                     <td class="px-4 py-4 text-right font-semibold text-rose-600">${tienFormatted}</td>
                     <td class="px-4 py-4 border-l text-sm">${item.soBBKT || '—'}<br><span class="text-xs text-slate-400">${item.ngayBBKT || ''}</span></td>
                     <td class="px-4 py-4 border-l text-sm">${item.soBBVP || '—'}<br><span class="text-xs text-slate-400">${item.ngayBBVP || ''}</span></td>
+                    <td class="px-4 py-4 border-l text-sm">${item.soQDXPHC || '—'}<br><span class="text-xs text-slate-400">${item.ngayQDXPHC || ''}</span></td>
                     <td class="px-4 py-4 border-l text-center"><span class="inline-flex px-3 py-1 rounded-3xl text-xs font-semibold bg-${status.color}-100 text-${status.color}-700">${status.label}</span></td>
                     <td class="px-4 py-4 border-l text-center text-xl">${item.daNopPhat ? '✅' : '❌'}</td>
                     <td class="px-4 py-4 border-l">
