@@ -548,7 +548,7 @@
             return { code: "DANG_CHO", label: "⏳ Đang chờ xử lý", color: "amber" };
         }
 
-        function renderSummary() {
+     function renderSummary() {
     const container = document.getElementById('summary');
     
     const total = data.length;
@@ -586,8 +586,7 @@
             <div class="text-xs uppercase tracking-widest text-indigo-600 mt-1">TỔNG TIỀN PHẠT</div>
         </div>
     `;
-        }
-
+}
         function toggleSortQD() {
             if (currentSort.field === 'ngayQDXPHC') {
                 currentSort.direction = currentSort.direction === 'desc' ? 'asc' : 'desc';
