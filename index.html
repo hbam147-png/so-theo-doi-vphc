@@ -549,19 +549,43 @@
         }
 
         function renderSummary() {
-            const container = document.getElementById('summary');
-            const total = data.length;
-            const daXuLy = data.filter(i => i.daNopPhat).length;
-            const quaHan = data.filter(i => calculateStatus(i).code === "QUA_HAN").length;
-            const sapQua = data.filter(i => calculateStatus(i).code === "SAP_QUA_HAN").length;
-            const dangCho = total - daXuLy - quaHan - sapQua;
+    const container = document.getElementById('summary');
+    
+    const total = data.length;
+    const daXuLy = data.filter(i => i.daNopPhat).length;
+    const quaHan = data.filter(i => calculateStatus(i).code === "QUA_HAN").length;
+    const sapQua = data.filter(i => calculateStatus(i).code === "SAP_QUA_HAN").length;
+    const dangCho = total - daXuLy - quaHan - sapQua;
 
-            container.innerHTML = `
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 text-center"><div class="text-4xl font-bold text-slate-900">${total}</div><div class="text-xs uppercase tracking-widest text-slate-500 mt-1">Tổng hồ sơ</div></div>
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 text-center"><div class="text-4xl font-bold text-emerald-600">${daXuLy}</div><div class="text-xs uppercase tracking-widest text-emerald-600 mt-1">Đã xử lý</div></div>
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-amber-100 text-center"><div class="text-4xl font-bold text-amber-600">${dangCho}</div><div class="text-xs uppercase tracking-widest text-amber-600 mt-1">Đang chờ</div></div>
-                <div class="bg-white rounded-2xl p-5 shadow-sm border border-rose-100 text-center"><div class="text-4xl font-bold text-rose-600">${quaHan + sapQua}</div><div class="text-xs uppercase tracking-widest text-rose-600 mt-1">Quá hạn / Sắp quá</div></div>
-            `;
+    // TÍNH TỔNG TIỀN PHẠT
+    const tongTienPhat = data.reduce((sum, item) => {
+        return sum + (Number(item.tienPhat) || 0);
+    }, 0);
+
+    const tongTienFormatted = tongTienPhat.toLocaleString('vi-VN') + ' ₫';
+
+    container.innerHTML = `
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 text-center">
+            <div class="text-4xl font-bold text-slate-900">${total}</div>
+            <div class="text-xs uppercase tracking-widest text-slate-500 mt-1">TỔNG HỒ SƠ</div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-emerald-100 text-center">
+            <div class="text-4xl font-bold text-emerald-600">${daXuLy}</div>
+            <div class="text-xs uppercase tracking-widest text-emerald-600 mt-1">ĐÃ XỬ LÝ</div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-amber-100 text-center">
+            <div class="text-4xl font-bold text-amber-600">${dangCho}</div>
+            <div class="text-xs uppercase tracking-widest text-amber-600 mt-1">ĐANG CHỜ</div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-rose-100 text-center">
+            <div class="text-4xl font-bold text-rose-600">${quaHan + sapQua}</div>
+            <div class="text-xs uppercase tracking-widest text-rose-600 mt-1">QUÁ HẠN / SẮP QUÁ</div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm border border-indigo-100 text-center">
+            <div class="text-4xl font-bold text-indigo-600">${tongTienFormatted}</div>
+            <div class="text-xs uppercase tracking-widest text-indigo-600 mt-1">TỔNG TIỀN PHẠT</div>
+        </div>
+    `;
         }
 
         function toggleSortQD() {
