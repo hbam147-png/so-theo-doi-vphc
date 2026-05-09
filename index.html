@@ -192,11 +192,10 @@
         // KẾT NỐI SHEETDB VÀ QUẢN LÝ DỮ LIỆU
         // =========================================================
         
-        const SHEETDB_URL = "https://sheetdb.io/api/v1/u9ggybe606ea9"; // Lấy từ SheetDB.io
+        const SHEETDB_URL = "https://sheetdb.io/api/v1/u9ggybe606ea9"; 
         
         let data = [];
 
-        // Trích xuất định dạng chuẩn để gửi lên SheetDB
         function toSheetDBFormat(item) {
             return {
                 "ID": item.id,
@@ -214,14 +213,12 @@
             };
         }
 
-        // Tải dữ liệu từ SheetDB
         async function initData() { 
-            showToast('🔄 Đang đồng bộ với SheetDB...', 'bg-blue-600');
+            showToast('🔄 Đang đồng bộ với đám mây...', 'bg-blue-600');
             try {
                 const response = await fetch(SHEETDB_URL);
                 if (response.ok) {
                     const rawData = await response.json();
-                    
                     data = rawData.map(item => ({
                         id: item['ID'],
                         tenCoSo: item['Tên cơ sở'],
@@ -236,23 +233,20 @@
                         tienPhat: item['Tiền phạt'],
                         daNopPhat: item['Đã nộp phạt'] === 'TRUE' || item['Đã nộp phạt'] === 'true'
                     }));
-                    
-                    // Lưu bản backup xuống máy tính
                     localStorage.setItem('ql_bbvp_sheetdb', JSON.stringify(data));
                     renderTable();
-                    showToast('✅ Tải dữ liệu đám mây thành công!', 'bg-emerald-600');
+                    showToast('✅ Tải dữ liệu thành công!', 'bg-emerald-600');
                 } else {
-                    throw new Error("Lỗi API");
+                    throw new Error("Lỗi kết nối máy chủ");
                 }
             } catch (error) {
                 console.error(error);
-                showToast('❌ Lỗi mạng! Đang lấy bản lưu cũ trong máy.', 'bg-rose-600');
+                showToast('❌ Lỗi mạng! Đang hiển thị bản lưu cũ trong máy.', 'bg-rose-600');
                 const saved = localStorage.getItem('ql_bbvp_sheetdb');
                 if (saved) { data = JSON.parse(saved); renderTable(); }
             }
         }
 
-        // Hàm Thêm và Sửa bằng SheetDB (Tốc độ ánh sáng, gọi trực tiếp API)
         async function handleFormSubmit(e) {
             e.preventDefault();
             const editIndex = document.getElementById('edit-index').value;
@@ -271,49 +265,58 @@
                 daNopPhat: document.getElementById('da-nop-phat').checked
             };
 
-            hideModal(); // Tắt popup ngay lập tức cho mượt
+            hideModal(); 
 
             if (editIndex !== '') {
-                // CHẾ ĐỘ SỬA
                 formData.id = document.getElementById('edit-id').value;
                 data[editIndex] = formData;
-                renderTable(); // Cập nhật màn hình ngay lập tức
+                renderTable(); 
                 
                 showToast('🔄 Đang cập nhật lên đám mây...', 'bg-amber-600');
                 try {
-                    await fetch(`${SHEETDB_URL}/ID/${formData.id}`, {
+                    const response = await fetch(`${SHEETDB_URL}/ID/${formData.id}`, {
                         method: 'PUT',
                         headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
                         body: JSON.stringify({ data: toSheetDBFormat(formData) })
                     });
-                    showToast('✅ Đã cập nhật lên Sheets!', 'bg-emerald-600');
+                    
+                    if(response.ok) {
+                        showToast('✅ Cập nhật hồ sơ thành công!', 'bg-emerald-600');
+                    } else {
+                        const err = await response.json();
+                        showToast(`❌ Lỗi lưu dữ liệu: Excel chưa tạo đúng TÊN CỘT!`, 'bg-rose-600');
+                    }
                 } catch (err) {
-                    showToast('❌ Lỗi mạng khi cập nhật đám mây!', 'bg-rose-600');
+                    showToast('❌ Lỗi mạng khi cập nhật! Vui lòng thử lại.', 'bg-rose-600');
                 }
             } else {
-                // CHẾ ĐỘ THÊM MỚI
-                formData.id = "ID_" + Date.now(); // Tạo mã ID duy nhất
-                data.unshift(formData); // Chèn lên đầu bảng
+                formData.id = "ID_" + Date.now(); 
+                data.unshift(formData); 
                 renderTable();
                 
-                showToast('🔄 Đang lưu hồ sơ mới...', 'bg-amber-600');
+                showToast('🔄 Đang đẩy hồ sơ mới lên mây...', 'bg-amber-600');
                 try {
-                    await fetch(SHEETDB_URL, {
+                    const response = await fetch(SHEETDB_URL, {
                         method: 'POST',
                         headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
                         body: JSON.stringify({ data: [toSheetDBFormat(formData)] })
                     });
-                    showToast('✅ Đã lưu an toàn lên Sheets!', 'bg-emerald-600');
+
+                    if(response.ok) {
+                        showToast('✅ Thêm mới thành công!', 'bg-emerald-600');
+                    } else {
+                        const err = await response.json();
+                        showToast(`❌ Lỗi từ máy chủ: Vui lòng kiểm tra lại Dòng 1 trong Google Sheets đã đủ 12 cột chưa!`, 'bg-rose-600');
+                    }
                 } catch (err) {
-                    showToast('❌ Lỗi mạng khi thêm mới!', 'bg-rose-600');
+                    showToast('❌ Lỗi mạng khi thêm mới! Có thể do trình duyệt chặn Pop-up/Ads.', 'bg-rose-600');
                 }
             }
             localStorage.setItem('ql_bbvp_sheetdb', JSON.stringify(data));
         }
 
-        // Hàm Xóa bằng SheetDB
         async function deleteRow(idx) { 
-            if (confirm("Xóa hồ sơ này? LƯU Ý: Dữ liệu cũng sẽ bị xóa khỏi Google Sheets!")) { 
+            if (confirm("Xóa hồ sơ này? LƯU Ý: Dữ liệu cũng sẽ bị xóa vĩnh viễn khỏi Google Sheets!")) { 
                 const idToDelete = data[idx].id;
                 data.splice(idx, 1); 
                 renderTable(); 
@@ -377,7 +380,7 @@
             { hanhVi: "Để hình thành môi trường nguy hiểm cháy, nổ có chi số nguy hiểm cháy, nổ vượt quá giới hạn dưới của giới hạn nồng độ bắt cháy", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 14, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Tàng trữ trái phép chất, hàng hóa nguy hiểm về cháy, nổ nhưng chưa đến mức truy cứu trách nhiệm hình sự", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Tịch thu tang vật", canCu: "Khoản 4, điều 14, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Sử dụng trái phép chất, hàng hóa nguy hiểm về cháy, nổ nhưng chưa đến mức truy cứu trách nhiệm hình sự", mucPhat: "47.500.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Tịch thu tang vật", canCu: "Khoản 5, điều 14, Nghị định số 106/2025/NĐ-CP" },
-            { hanhVi: "Không duy trì thiết bị phát hiện rò rỉ chất, hàng hóa nguy hiểm về cháy, nổ đã được trang bị, lắp đặt", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì thiết phát hiện rò rỉ chất, hàng hóa nguy hiểm về cháy, nổ đã được trang bị, lắp đặt", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 15, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Không duy trì thiết bị, hệ thống chống tĩnh điện đã được trang bị, lắp đặt.", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 15, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Không trang bị, lắp đặt thiết bị phát hiện rò rỉ chất, hàng hóa nguy hiểm về cháy, nổ", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 15, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Không trang bị, lắp đặt thiết bị, hệ thống chống tĩnh điện", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 15, Nghị định số 106/2025/NĐ-CP" },
@@ -517,84 +520,7 @@
             }
         }
 
-        // ================= IMPORT & XUẤT EXCEL =================
-        function parseImportedDate(val) {
-            if (!val) return "";
-            if (val instanceof Date) {
-                const d = new Date(val.getTime() - (val.getTimezoneOffset() * 60000));
-                return d.toISOString().split('T')[0];
-            }
-            if (typeof val === 'string') {
-                const parts = val.split(/[-/]/);
-                if (parts.length >= 3) {
-                    let d = parts[0].padStart(2, '0'); let m = parts[1].padStart(2, '0'); let y = parts[2].substring(0,4);
-                    if (parts[0].length === 4) return `${parts[0]}-${m}-${parts[2].padStart(2, '0').substring(0,2)}`; 
-                    if (y.length === 2) y = "20" + y; return `${y}-${m}-${d}`;
-                }
-            }
-            return "";
-        }
-
-        async function handleImportFile(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            showToast('🔄 Đang xử lý file...', 'bg-blue-600');
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                const workbook = XLSX.read(new Uint8Array(e.target.result), {type: 'array', cellDates: true});
-                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-                const importedData = jsonData.map(row => ({
-                    id: "ID_" + Math.random().toString(36).substr(2, 9),
-                    tenCoSo: row["Tên cơ sở"] || row["Tên"] || "",
-                    doiTuongPhat: row["Đối tượng"] || "Tổ chức",
-                    noiDungViPham: row["Hành vi vi phạm"] || row["Nội dung vi phạm"] || row["Hành vi"] || "",
-                    soBBKT: row["Số BBKT"] || row["Số BB KT"] || "",
-                    ngayBBKT: parseImportedDate(row["Ngày BBKT"] || row["Ngày BB KT"]),
-                    soBBVP: row["Số BBVP"] || row["Số BB VP"] || "",
-                    ngayBBVP: parseImportedDate(row["Ngày BBVP"] || row["Ngày BB VP"]),
-                    soQDXPHC: row["Số QĐ"] || row["Số QĐ XPHC"] || "",
-                    ngayQDXPHC: parseImportedDate(row["Ngày QĐ"] || row["Ngày QĐ XPHC"]),
-                    tienPhat: parseInt(String(row["Tiền phạt"] || row["Số tiền phạt"] || "0").replace(/\D/g, '')),
-                    daNopPhat: String(row["Đã nộp phạt"] || row["Đã nộp phạt chưa"]).toLowerCase() === 'có' || row["Đã nộp phạt"] === true
-                }));
-                
-                data = [...data, ...importedData];
-                localStorage.setItem('ql_bbvp_sheetdb', JSON.stringify(data));
-                renderTable();
-                
-                showToast(`🔄 Đã nạp ${importedData.length} dòng. Đang đẩy lên đám mây...`, 'bg-amber-600');
-                try {
-                    const sheetDBData = importedData.map(item => toSheetDBFormat(item));
-                    await fetch(SHEETDB_URL, {
-                        method: 'POST',
-                        headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ data: sheetDBData })
-                    });
-                    showToast('✅ Đã nhập file & đồng bộ thành công!', 'bg-emerald-600');
-                } catch(err) {
-                    showToast('❌ Lỗi tải lên! Dữ liệu đã lưu tạm trên máy.', 'bg-rose-600');
-                }
-                event.target.value = ''; 
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function exportToExcel() {
-            if (data.length === 0) { showToast('❌ Bảng trống!', 'bg-rose-600'); return; }
-            const exportData = data.map((i, idx) => ({ 
-                "STT": idx + 1, "Tên cơ sở": i.tenCoSo, "Hành vi vi phạm": i.noiDungViPham, "Số tiền phạt": i.tienPhat,
-                "Số BBKT": i.soBBKT, "Ngày BBKT": formatDate(i.ngayBBKT).replace(/<[^>]*>?/gm, ''),
-                "Số BBVP": i.soBBVP, "Ngày BBVP": formatDate(i.ngayBBVP).replace(/<[^>]*>?/gm, ''),
-                "Tình trạng": getStatusInfo(i).text,
-                "Đã nộp phạt": i.daNopPhat ? 'Có' : 'Không'
-            }));
-            const ws = XLSX.utils.json_to_sheet(exportData); 
-            ws['!cols'] = [{wch:5}, {wch:35}, {wch:60}, {wch:15}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:20}, {wch:15}];
-            const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "BBVP");
-            XLSX.writeFile(wb, `DS_Vi_Pham_${new Date().toISOString().slice(0,10)}.xlsx`);
-        }
-
-        // Khởi động
+        function filterTable() { renderTable(); }
         window.onload = () => { khoiTaoTuDien(); initData(); };
     </script>
 </body>
