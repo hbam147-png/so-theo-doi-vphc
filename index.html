@@ -9,9 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <script>
-        tailwind.config = {
-            theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' } } } }
-        }
+        tailwind.config = { theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'] }, colors: { brand: { 50: '#eff6ff', 100: '#dbeafe', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8' } } } } }
     </script>
     
     <style>
@@ -192,6 +190,7 @@
         // KẾT NỐI SHEETDB VÀ QUẢN LÝ DỮ LIỆU
         // =========================================================
         
+        // Link anh cung cấp đã được đưa vào đây chuẩn 100%
         const SHEETDB_URL = "https://sheetdb.io/api/v1/u9ggybe606ea9"; 
         
         let data = [];
@@ -214,7 +213,7 @@
         }
 
         async function initData() { 
-            showToast('🔄 Đang đồng bộ với đám mây...', 'bg-blue-600');
+            showToast('🔄 Đang tải dữ liệu từ SheetDB...', 'bg-blue-600');
             try {
                 const response = await fetch(SHEETDB_URL);
                 if (response.ok) {
@@ -237,11 +236,12 @@
                     renderTable();
                     showToast('✅ Tải dữ liệu thành công!', 'bg-emerald-600');
                 } else {
-                    throw new Error("Lỗi kết nối máy chủ");
+                    const errText = await response.text();
+                    showToast(`❌ Lỗi máy chủ: ${errText}`, 'bg-rose-600');
                 }
             } catch (error) {
-                console.error(error);
-                showToast('❌ Lỗi mạng! Đang hiển thị bản lưu cũ trong máy.', 'bg-rose-600');
+                console.error("Lỗi:", error);
+                showToast('❌ Bị chặn! Hãy TẮT CHẶN QUẢNG CÁO (Adblock/Shields) trên trình duyệt!', 'bg-rose-600');
                 const saved = localStorage.getItem('ql_bbvp_sheetdb');
                 if (saved) { data = JSON.parse(saved); renderTable(); }
             }
@@ -268,6 +268,7 @@
             hideModal(); 
 
             if (editIndex !== '') {
+                // CHẾ ĐỘ SỬA
                 formData.id = document.getElementById('edit-id').value;
                 data[editIndex] = formData;
                 renderTable(); 
@@ -277,19 +278,20 @@
                     const response = await fetch(`${SHEETDB_URL}/ID/${formData.id}`, {
                         method: 'PUT',
                         headers: { 'Accept': 'application/json', 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ data: toSheetDBFormat(formData) })
+                        body: JSON.stringify({ data: [toSheetDBFormat(formData)] })
                     });
                     
                     if(response.ok) {
                         showToast('✅ Cập nhật hồ sơ thành công!', 'bg-emerald-600');
                     } else {
-                        const err = await response.json();
-                        showToast(`❌ Lỗi lưu dữ liệu: Excel chưa tạo đúng TÊN CỘT!`, 'bg-rose-600');
+                        const errText = await response.text();
+                        showToast(`❌ Cột Excel sai: ${errText}`, 'bg-rose-600');
                     }
                 } catch (err) {
-                    showToast('❌ Lỗi mạng khi cập nhật! Vui lòng thử lại.', 'bg-rose-600');
+                    showToast('❌ Bị chặn! Hãy TẮT chặn quảng cáo/khiên bảo vệ trình duyệt!', 'bg-rose-600');
                 }
             } else {
+                // CHẾ ĐỘ THÊM MỚI
                 formData.id = "ID_" + Date.now(); 
                 data.unshift(formData); 
                 renderTable();
@@ -305,11 +307,11 @@
                     if(response.ok) {
                         showToast('✅ Thêm mới thành công!', 'bg-emerald-600');
                     } else {
-                        const err = await response.json();
-                        showToast(`❌ Lỗi từ máy chủ: Vui lòng kiểm tra lại Dòng 1 trong Google Sheets đã đủ 12 cột chưa!`, 'bg-rose-600');
+                        const errText = await response.text();
+                        showToast(`❌ Cột Excel sai: ${errText}`, 'bg-rose-600');
                     }
                 } catch (err) {
-                    showToast('❌ Lỗi mạng khi thêm mới! Có thể do trình duyệt chặn Pop-up/Ads.', 'bg-rose-600');
+                    showToast('❌ Bị chặn! Hãy TẮT chặn quảng cáo/khiên bảo vệ trình duyệt!', 'bg-rose-600');
                 }
             }
             localStorage.setItem('ql_bbvp_sheetdb', JSON.stringify(data));
@@ -324,10 +326,15 @@
                 
                 showToast('🔄 Đang xóa trên đám mây...', 'bg-amber-600');
                 try {
-                    await fetch(`${SHEETDB_URL}/ID/${idToDelete}`, { method: 'DELETE' });
-                    showToast('🗑️ Đã xóa thành công!', 'bg-slate-800');
+                    const response = await fetch(`${SHEETDB_URL}/ID/${idToDelete}`, { method: 'DELETE' });
+                    if(response.ok) {
+                        showToast('🗑️ Đã xóa thành công!', 'bg-slate-800');
+                    } else {
+                        const errText = await response.text();
+                        showToast(`❌ Lỗi API: ${errText}`, 'bg-rose-600');
+                    }
                 } catch (err) {
-                    showToast('❌ Lỗi mạng khi xóa!', 'bg-rose-600');
+                    showToast('❌ Bị chặn! Hãy TẮT chặn quảng cáo trình duyệt!', 'bg-rose-600');
                 }
             } 
         }
@@ -380,7 +387,7 @@
             { hanhVi: "Để hình thành môi trường nguy hiểm cháy, nổ có chi số nguy hiểm cháy, nổ vượt quá giới hạn dưới của giới hạn nồng độ bắt cháy", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Khoản 3, điều 14, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Tàng trữ trái phép chất, hàng hóa nguy hiểm về cháy, nổ nhưng chưa đến mức truy cứu trách nhiệm hình sự", mucPhat: "22.500.000", thamQuyen: "Trưởng phòng CA cấp tỉnh", khacPhucHauQua: "Tịch thu tang vật", canCu: "Khoản 4, điều 14, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Sử dụng trái phép chất, hàng hóa nguy hiểm về cháy, nổ nhưng chưa đến mức truy cứu trách nhiệm hình sự", mucPhat: "47.500.000", thamQuyen: "Giám đốc Công an cấp tỉnh", khacPhucHauQua: "Tịch thu tang vật", canCu: "Khoản 5, điều 14, Nghị định số 106/2025/NĐ-CP" },
-            { hanhVi: "Không duy trì thiết phát hiện rò rỉ chất, hàng hóa nguy hiểm về cháy, nổ đã được trang bị, lắp đặt", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 15, Nghị định số 106/2025/NĐ-CP" },
+            { hanhVi: "Không duy trì thiết bị phát hiện rò rỉ chất, hàng hóa nguy hiểm về cháy, nổ đã được trang bị, lắp đặt", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 1, điều 15, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Không duy trì thiết bị, hệ thống chống tĩnh điện đã được trang bị, lắp đặt.", mucPhat: "4.000.000", thamQuyen: "Cán bộ CAND", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 1, điều 15, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Không trang bị, lắp đặt thiết bị phát hiện rò rỉ chất, hàng hóa nguy hiểm về cháy, nổ", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm a, khoản 2, điều 15, Nghị định số 106/2025/NĐ-CP" },
             { hanhVi: "Không trang bị, lắp đặt thiết bị, hệ thống chống tĩnh điện", mucPhat: "12.500.000", thamQuyen: "Chỉ huy đội", khacPhucHauQua: "Không", canCu: "Điểm b, khoản 2, điều 15, Nghị định số 106/2025/NĐ-CP" },
